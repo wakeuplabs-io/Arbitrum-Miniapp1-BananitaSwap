@@ -59,9 +59,10 @@ jobs:
           rm -rf ~/.pulumi
 
       - name: Deploy
-        run: npm run deploy:app:staging
+        run: npm run deploy:app:production
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DOMAIN_URL: ${{ vars.DOMAIN_URL }}
 
       - name: Save Outputs
         id: save-outputs
