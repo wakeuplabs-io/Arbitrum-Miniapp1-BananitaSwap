@@ -1,0 +1,31 @@
+import { config } from "dotenv";
+import path from "node:path";
+import { z } from "zod";
+
+// Get the root directory of the project
+const rootDir = process.cwd();
+
+// Cargar variables de entorno desde múltiples fuentes
+// Prioridad: .env.local > .env > .env.defaults
+config({ path: path.resolve(rootDir, ".env.defaults") });
+config({ path: path.resolve(rootDir, ".env") });
+config({ path: path.resolve(rootDir, ".env.local") });
+
+const envSchema = z
+  .object({
+    DATABASE_URL: z.string().url().optional(), //Remove optional after the database is created
+    PORT: z.coerce.number().default(3000),
+    NODE_ENV: z.enum(["development", "production", "staging"]).default("development"),
+  })
+
+export type Env = z.infer<typeof envSchema>;
+
+const { data, error } = envSchema.safeParse(process.env);
+
+if (error) {
+  console.error("❌ Invalid environment variables:");
+  console.error(JSON.stringify(error.flatten().fieldErrors, null, 2));
+  process.exit(1);
+}
+
+export const env: Env = data!;

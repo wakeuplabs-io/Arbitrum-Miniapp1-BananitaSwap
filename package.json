@@ -1,0 +1,29 @@
+{
+  "name": "realstate-crypto-investor",
+  "version": "0.0.4",
+  "type": "module",
+  "scripts": {
+    "dev:api": "cd packages/api && npm run dev",
+    "dev:ui": "cd packages/ui && npm run dev",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:ui\"",
+    "build:api": "cd packages/api && npm run build",
+    "build:ui": "cd packages/ui && npm run build",
+    "build:ci": "npm run build:api && npm run build:ui",
+    "deploy:app:staging": "sst deploy --stage=staging --print-logs",
+    "deploy:app:production": "sst deploy --stage=production --print-logs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@pulumi/aws": "6.83.2",
+    "@pulumi/pulumi": "3.217.1",
+    "@typescript-eslint/eslint-plugin": "7.6.0",
+    "@typescript-eslint/parser": "7.6.0",
+    "concurrently": "8.2.2"
+  },
+  "dependencies": {
+    "dotenv": "16.4.5",
+    "sst": "3.17.4"
+  }
+}

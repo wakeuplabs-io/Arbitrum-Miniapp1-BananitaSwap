@@ -1,0 +1,5 @@
+.tanstack
+node_modules
+.env.*
+routeTree.gen.ts
+!.env.example
