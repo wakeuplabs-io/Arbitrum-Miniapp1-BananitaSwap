@@ -31,7 +31,13 @@ function TokenDetailPage() {
 		return (
 			<div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
 				<p className="text-muted-foreground">Token not found</p>
-				<Button variant="outline" onClick={() => navigate({ to: '/swap' })}>
+				<Button variant="outline" onClick={() => navigate({
+					to: '/swap',
+					search: {
+						token: undefined,
+						mode: 'buy',
+					},
+				})}>
 					Back to Swap
 				</Button>
 			</div>
@@ -46,7 +52,13 @@ function TokenDetailPage() {
 					type="button"
 					variant="ghost"
 					size="icon"
-					onClick={() => navigate({ to: '/swap' })}
+					onClick={() => navigate({
+						to: '/swap',
+						search: {
+							token: undefined,
+							mode: 'buy',
+						},
+					})}
 					aria-label="Back"
 					className="rounded-full shrink-0"
 				>

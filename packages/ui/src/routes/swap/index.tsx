@@ -1,11 +1,9 @@
-import { createFileRoute, useSearch } from '@tanstack/react-router'
+import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router'
 import { useState, useCallback, useEffect } from 'react'
-import { ArrowLeftRight, Wallet } from 'lucide-react'
 import { SwapScreen } from '@/components/swap/swap-screen'
-import { PortfolioScreen } from '@/components/swap/portfolio-screen'
-import { DepositModal } from '@/components/swap/deposit-modal'
 import { TokenSelectModal } from '@/components/swap/token-select-modal'
 import { SuccessScreen } from '@/components/swap/success-screen'
+import { BottomNav } from '@/components/navigation/bottom-nav'
 import { TOKENS, type Token } from '@/lib/tokens'
 
 export const Route = createFileRoute('/swap/')({
@@ -16,51 +14,7 @@ export const Route = createFileRoute('/swap/')({
 	}),
 })
 
-type Tab = 'swap' | 'portfolio'
-type Modal = 'none' | 'deposit' | 'withdraw' | 'token-select'
-
-const tabs = [
-	{ id: 'swap' as Tab, label: 'Swap', icon: ArrowLeftRight },
-	{ id: 'portfolio' as Tab, label: 'Portfolio', icon: Wallet },
-]
-
-function NavTabButton({
-	tab,
-	isActive,
-	onSelect,
-}: {
-	tab: (typeof tabs)[number]
-	isActive: boolean
-	onSelect: () => void
-}) {
-	return (
-		<div
-			role="tab"
-			tabIndex={0}
-			aria-label={tab.label}
-			aria-selected={isActive}
-			onPointerDown={(e) => {
-				e.preventDefault()
-				onSelect()
-			}}
-			onKeyDown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					e.preventDefault()
-					onSelect()
-				}
-			}}
-			className={`nav-tab-btn flex flex-col items-center justify-center gap-1 h-16 py-2 px-6 rounded-none !bg-transparent cursor-pointer transition-colors duration-200 select-none ${isActive
-				? 'text-primary font-bold [@media(hover:hover)]:hover:bg-[#FFC700] [@media(hover:hover)]:hover:text-[#0A0A0A]'
-				: 'text-muted-foreground [@media(hover:hover)]:hover:text-foreground [@media(hover:hover)]:hover:bg-muted/50'
-				}`}
-		>
-			<tab.icon className={`w-5 h-5 shrink-0 nav-tab-icon ${isActive ? 'drop-shadow-sm nav-tab-icon-active' : ''}`} />
-			<span className="text-xs font-display font-bold uppercase tracking-wide">
-				{tab.label}
-			</span>
-		</div>
-	)
-}
+type Modal = 'none' | 'token-select'
 
 // Preload success illustrations so they're cached before the user completes a swap/deposit/withdraw
 function preloadSuccessImages() {
@@ -72,7 +26,7 @@ function preloadSuccessImages() {
 
 function SwapPage() {
 	const { token: tokenFromUrl, mode: modeFromUrl } = useSearch({ from: '/swap/' })
-	const [activeTab, setActiveTab] = useState<Tab>('swap')
+	const navigate = useNavigate()
 	const [modal, setModal] = useState<Modal>('none')
 	const [showSwapSuccess, setShowSwapSuccess] = useState(false)
 
@@ -82,8 +36,13 @@ function SwapPage() {
 		preloadSuccessImages()
 	}, [])
 	const [sellToken, setSellToken] = useState<Token | null>(null)
-	const [swapDirection, setSwapDirection] = useState<'buy' | 'sell'>('buy')
+	const [swapDirection, setSwapDirection] = useState<'buy' | 'sell'>(modeFromUrl)
 	const [tokenSelectSide, setTokenSelectSide] = useState<'buy' | 'sell'>('buy')
+
+	// Sync swapDirection with URL mode param
+	useEffect(() => {
+		setSwapDirection(modeFromUrl)
+	}, [modeFromUrl])
 
 	useEffect(() => {
 		if (!tokenFromUrl) return
@@ -101,7 +60,6 @@ function SwapPage() {
 				setBuyToken(usdc)
 				setSwapDirection('sell')
 			}
-			setActiveTab('swap')
 		}
 	}, [tokenFromUrl, modeFromUrl])
 
@@ -111,103 +69,110 @@ function SwapPage() {
 	}
 
 	const handleSelectTokenFromSwap = useCallback((token: Token) => {
+		const usdc = TOKENS.find((t) => t.symbol === 'USDC')
+		if (!usdc) return
+
+		const newMode = tokenSelectSide === 'buy' ? 'buy' : 'sell'
 		if (tokenSelectSide === 'buy') {
 			setBuyToken(token)
-			setSellToken(null)
+			setSellToken(usdc)
 			setSwapDirection('buy')
 		} else {
 			setSellToken(token)
-			setBuyToken(null)
+			setBuyToken(usdc)
 			setSwapDirection('sell')
 		}
-	}, [tokenSelectSide])
+		// Update URL with new mode
+		navigate({
+			to: '/swap',
+			search: {
+				token: token.symbol,
+				mode: newMode,
+			},
+			replace: true,
+		})
+	}, [tokenSelectSide, navigate])
 
 	const handleToggleDirection = useCallback(() => {
-		setSwapDirection((prev) => {
-			if (prev === 'buy') {
-				if (buyToken) setSellToken(buyToken)
-				setBuyToken(null)
-				return 'sell'
+		const usdc = TOKENS.find((t) => t.symbol === 'USDC')
+		if (!usdc) return
+
+		const newMode = swapDirection === 'buy' ? 'sell' : 'buy'
+		let tokenToUpdate: Token | null = null
+
+		if (swapDirection === 'buy') {
+			// Currently buying: buyToken is the selected token, sellToken is USDC
+			// Toggle to selling: sellToken becomes the selected token, buyToken becomes USDC
+			tokenToUpdate = buyToken
+			if (buyToken) {
+				setSellToken(buyToken)
+				setBuyToken(usdc)
+			} else {
+				// No token selected, just swap USDC positions
+				setSellToken(null)
+				setBuyToken(usdc)
 			}
-			if (sellToken) setBuyToken(sellToken)
-			setSellToken(null)
-			return 'buy'
+		} else {
+			tokenToUpdate = sellToken
+			if (sellToken) {
+				setBuyToken(sellToken)
+				setSellToken(usdc)
+			} else {
+				// No token selected, just swap USDC positions
+				setBuyToken(null)
+				setSellToken(usdc)
+			}
+		}
+
+		setSwapDirection(newMode)
+
+		navigate({
+			to: '/swap',
+			search: {
+				token: tokenToUpdate?.symbol,
+				mode: newMode,
+			},
+			replace: true,
 		})
-	}, [buyToken, sellToken])
-
-	const handlePortfolioSell = useCallback((token: Token) => {
-		setSellToken(token)
-		setBuyToken(null)
-		setSwapDirection('sell')
-		setActiveTab('swap')
-	}, [])
-
-	const handlePortfolioBuy = useCallback((token: Token) => {
-		setBuyToken(token)
-		setSellToken(null)
-		setSwapDirection('buy')
-		setActiveTab('swap')
-	}, [])
+	}, [buyToken, sellToken, swapDirection, navigate])
 
 	return (
 		<main className="min-h-screen bg-background max-w-[430px] mx-auto relative overflow-hidden">
 			<div className="h-[calc(100dvh-64px)]">
-				{activeTab === 'swap' && (
-					<>
-						<SwapScreen
-							onOpenTokenSelect={handleOpenTokenSelect}
-							buyToken={buyToken}
-							sellToken={sellToken}
-							direction={swapDirection}
-							onToggleDirection={handleToggleDirection}
-							onSwapComplete={() => setShowSwapSuccess(true)}
-						/>
-						{showSwapSuccess && (
-							<SuccessScreen
-								title={swapDirection === 'buy' ? 'Buy successful!' : 'Sell successful!'}
-								message="Your swap has been completed."
-								onDismiss={() => {
-									setShowSwapSuccess(false)
-									setBuyToken(null)
-									setSellToken(null)
-									setSwapDirection('buy')
-								}}
-								buttonLabel="Done"
-							/>
-						)}
-					</>
-				)}
-				{activeTab === 'portfolio' && (
-					<PortfolioScreen
-						onOpenDeposit={() => setModal('deposit')}
-						onOpenWithdraw={() => setModal('withdraw')}
-						onOpenSwap={() => setActiveTab('swap')}
-						onSellToken={handlePortfolioSell}
-						onBuyToken={handlePortfolioBuy}
+				<SwapScreen
+					onOpenTokenSelect={handleOpenTokenSelect}
+					buyToken={buyToken}
+					sellToken={sellToken}
+					direction={swapDirection}
+					onToggleDirection={handleToggleDirection}
+					onSwapComplete={() => setShowSwapSuccess(true)}
+				/>
+				{showSwapSuccess && (
+					<SuccessScreen
+						title={swapDirection === 'buy' ? 'Buy successful!' : 'Sell successful!'}
+						message="Your swap has been completed."
+						onDismiss={() => {
+							setShowSwapSuccess(false)
+							setBuyToken(null)
+							setSellToken(null)
+							setSwapDirection('buy')
+							// Reset URL to buy mode
+							navigate({
+								to: '/swap',
+								search: (prev) => ({
+									...prev,
+									token: undefined,
+									mode: 'buy',
+								}),
+								replace: true,
+							})
+						}}
+						buttonLabel="Done"
 					/>
 				)}
 			</div>
 
-			<nav className="nav-tabs fixed bottom-0 left-0 right-0 w-full bg-[#FFFFFF] border-t-2 border-border max-w-[430px] mx-auto z-50 shadow-lg transition-shadow duration-200" role="tablist">
-				<div className="flex items-center justify-around h-16">
-					{tabs.map((tab) => (
-						<NavTabButton
-							key={tab.id}
-							tab={tab}
-							isActive={activeTab === tab.id}
-							onSelect={() => setActiveTab(tab.id)}
-						/>
-					))}
-				</div>
-			</nav>
-
-			{modal === 'deposit' && (
-				<DepositModal onClose={() => setModal('none')} mode="deposit" />
-			)}
-
-			{modal === 'withdraw' && (
-				<DepositModal onClose={() => setModal('none')} mode="withdraw" />
-			)}
+			<BottomNav />
 
 			{modal === 'token-select' && (
 				<TokenSelectModal

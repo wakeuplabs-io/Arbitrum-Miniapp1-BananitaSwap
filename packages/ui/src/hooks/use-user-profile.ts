@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react'
-import { DEV_SHOW_EMPTY_STATES } from '@/lib/tokens'
 
 const STORAGE_KEY_NAME = 'user-profile-display-name'
 const STORAGE_KEY_AVATAR = 'user-profile-avatar-data-url'
@@ -51,19 +50,25 @@ export type UserProfile = {
 
 export function useUserProfile(): UserProfile {
 	const [displayName, setDisplayNameState] = useState(getStoredDisplayName)
-	const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(() =>
-		DEV_SHOW_EMPTY_STATES ? null : getStoredAvatar()
-	)
+	const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(getStoredAvatar)
 
 	useEffect(() => {
-		localStorage.setItem(STORAGE_KEY_NAME, displayName)
+		const stored = localStorage.getItem(STORAGE_KEY_NAME)
+		if (stored !== displayName) {
+			localStorage.setItem(STORAGE_KEY_NAME, displayName)
+		}
 	}, [displayName])
 
 	useEffect(() => {
+		const stored = localStorage.getItem(STORAGE_KEY_AVATAR)
 		if (avatarDataUrl === null) {
-			localStorage.removeItem(STORAGE_KEY_AVATAR)
+			if (stored !== null) {
+				localStorage.removeItem(STORAGE_KEY_AVATAR)
+			}
 		} else {
-			localStorage.setItem(STORAGE_KEY_AVATAR, avatarDataUrl)
+			if (stored !== avatarDataUrl) {
+				localStorage.setItem(STORAGE_KEY_AVATAR, avatarDataUrl)
+			}
 		}
 	}, [avatarDataUrl])
 

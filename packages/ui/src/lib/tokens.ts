@@ -76,16 +76,9 @@ export const TOKENS: Token[] = [
 	},
 ]
 
-/** Set to true to show all empty states (tokens, avatar). Set to false to restore normal view. */
-export const DEV_SHOW_EMPTY_STATES = false
-
-const NORMAL_HOLDINGS: { token: Token; amount: number }[] = [
+export const USER_HOLDINGS: { token: Token; amount: number }[] = [
 	{ token: TOKENS[0], amount: 150 },
 ]
-
-export const USER_HOLDINGS: { token: Token; amount: number }[] = DEV_SHOW_EMPTY_STATES
-	? []
-	: NORMAL_HOLDINGS
 
 /** Total balance in USDC = sum of all holdings valued in USD */
 export function getTotalBalanceUsdc(): number {
