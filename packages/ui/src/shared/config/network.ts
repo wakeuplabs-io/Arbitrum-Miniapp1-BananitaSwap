@@ -6,7 +6,6 @@ import envParsed from "@/env-parsed";
 export type NetworkConfig = {
   chain: Chain;
   rpcUrl?: string;
-  // network: "base" | "base-sepolia";
   explorerUrl: string;
 };
 
@@ -20,13 +19,11 @@ export const getNetworkConfig = (): NetworkConfig => {
 
 const arbitrumSepoliaNetworkConfig: NetworkConfig = {
   chain: arbitrumSepolia,
-  // network: "arbitrum-sepolia",
   explorerUrl: "https://sepolia.arbiscan.io",
 };
 
 const arbitrumNetworkConfig: NetworkConfig = {
   chain: arbitrum,
-  // network: "arbitrum",
   explorerUrl: "https://arbiscan.io",
 };
 
@@ -48,21 +45,4 @@ export const getShortAddress = (address: string) => {
 export function buildContractExplorerUrl(contractAddress: string): string {
   const { explorerUrl } = getNetworkConfig();
   return `${explorerUrl}/address/${contractAddress}`;
-}
-
-export type TokenAddresses = {
-  USDC: string;
-  USDT: string;
-};
-
-/**
- * Get token addresses from environment variables
- * @returns Token addresses object with USDC and USDT
- */
-export function getTokenAddresses(): TokenAddresses {
-  const { USDC_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS } = envParsed;
-  return {
-    USDC: USDC_TOKEN_ADDRESS,
-    USDT: USDT_TOKEN_ADDRESS,
-  };
 }

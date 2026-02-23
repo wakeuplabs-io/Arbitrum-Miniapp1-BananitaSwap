@@ -1,6 +1,7 @@
 import { EnvSchema } from "./env-schema.js";
 
 const env = {
+  RPC_URL: import.meta.env.VITE_RPC_URL,
   NODE_ENV: import.meta.env.NODE_ENV,
   API_URL: import.meta.env.VITE_API_URL,
   MOCK_API: import.meta.env.VITE_MOCK_API,

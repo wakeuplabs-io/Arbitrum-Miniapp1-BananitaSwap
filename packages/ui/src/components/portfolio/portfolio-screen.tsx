@@ -3,7 +3,7 @@ import { DollarSign, ArrowLeftRight, ArrowDownToLine, X, Pencil } from 'lucide-r
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { TokenIcon } from './token-icon'
+import { TokenIcon } from '@/components/swap/token-icon'
 import { TokensEmptyState } from './tokens-empty-state'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useBalance } from '@/hooks/use-balance'

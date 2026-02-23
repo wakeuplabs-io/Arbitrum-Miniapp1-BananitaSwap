@@ -17,7 +17,8 @@ export const EnvSchema = z
         }),
       })
       .default("development"),
+    RPC_URL: z.string().url().optional(),
   })
-;
+  ;
 
 export type Env = z.infer<typeof EnvSchema>;

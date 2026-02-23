@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
-import { PortfolioScreen } from '@/components/swap/portfolio-screen'
-import { DepositModal } from '@/components/swap/deposit-modal'
+import { PortfolioScreen } from '@/components/portfolio/portfolio-screen'
+import { DepositWithdrawModal } from '@/components/portfolio/deposit-withdraw-modal'
 import { BottomNav } from '@/components/navigation/bottom-nav'
 import type { Token } from '@/lib/tokens'
 
@@ -83,11 +83,11 @@ function PortfolioPage() {
       <BottomNav />
 
       {action === 'deposit' && (
-        <DepositModal onClose={handleCloseModal} mode="deposit" />
+        <DepositWithdrawModal onClose={handleCloseModal} mode="deposit" />
       )}
 
       {action === 'withdraw' && (
-        <DepositModal onClose={handleCloseModal} mode="withdraw" />
+        <DepositWithdrawModal onClose={handleCloseModal} mode="withdraw" />
       )}
     </main>
   )

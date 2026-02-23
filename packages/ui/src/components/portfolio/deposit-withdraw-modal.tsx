@@ -2,23 +2,28 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { NumericKeypad } from './numeric-keypad'
-import { SwipeButton } from './swipe-button'
-import { SuccessScreen } from './success-screen'
+import { NumericKeypad } from '@/components/swap/numeric-keypad'
+import { SwipeButton } from '@/components/swap/swipe-button'
+import { SuccessScreen } from '@/components/swap/success-screen'
 import { useBalance } from '@/hooks/use-balance'
+import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
+import { TokenName } from '@lemoncash/mini-app-sdk'
 
-type DepositModalProps = {
+type DepositWithdrawModalProps = {
 	onClose: () => void
 	mode?: 'deposit' | 'withdraw'
 }
 
-export function DepositModal({ onClose, mode = 'deposit' }: DepositModalProps) {
+export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithdrawModalProps) {
 	const title = mode === 'deposit' ? 'Deposit' : 'Withdraw'
 	const swipeLabel =
 		mode === 'deposit' ? 'Swipe to Deposit' : 'Swipe to Withdraw'
 	const [amount, setAmount] = useState('')
 	const [showSuccess, setShowSuccess] = useState(false)
+	const [isProcessing, setIsProcessing] = useState(false)
+	const [error, setError] = useState<string | null>(null)
 	const { balanceUsd } = useBalance()
+	const { handleDeposit, handleWithdraw, isInLemonWebView } = useLemonMiniapp()
 
 	const quickAmounts = [25, 50, 100]
 	const displayValue = amount || '0'
@@ -34,10 +39,44 @@ export function DepositModal({ onClose, mode = 'deposit' }: DepositModalProps) {
 			return
 		}
 		setAmount((prev) => prev + key)
+		setError(null)
 	}
 
 	function handleDelete() {
 		setAmount((prev) => prev.slice(0, -1))
+		setError(null)
+	}
+
+	async function handleSwipeComplete() {
+		if (!isInLemonWebView) {
+			setError(`Please open this app in Lemon Cash to ${mode === 'deposit' ? 'deposit' : 'withdraw'}`)
+			return
+		}
+
+		if (!isValid || numericValue <= 0) {
+			return
+		}
+
+		setIsProcessing(true)
+		setError(null)
+
+		try {
+			if (mode === 'deposit') {
+				await handleDeposit(amount, TokenName.USDC)
+			} else {
+				await handleWithdraw(amount, TokenName.USDC)
+			}
+			setShowSuccess(true)
+		} catch (err) {
+			const errorMessage =
+				err instanceof Error
+					? err.message
+					: `${mode === 'deposit' ? 'Deposit' : 'Withdraw'} failed. Please try again.`
+			setError(errorMessage)
+			console.error(`${mode === 'deposit' ? 'Deposit' : 'Withdraw'} error:`, err)
+		} finally {
+			setIsProcessing(false)
+		}
 	}
 
 	if (showSuccess) {
@@ -93,6 +132,16 @@ export function DepositModal({ onClose, mode = 'deposit' }: DepositModalProps) {
 							Exceeds balance
 						</p>
 					)}
+					{error && (
+						<p className="text-sm text-destructive font-medium mt-2 text-center max-w-xs">
+							{error}
+						</p>
+					)}
+					{isProcessing && (
+						<p className="text-sm text-muted-foreground font-medium mt-2">
+							Processing {mode === 'deposit' ? 'deposit' : 'withdrawal'}...
+						</p>
+					)}
 					<p className="text-sm text-muted-foreground text-center mt-1">
 						{mode === 'deposit'
 							? 'Current balance: '
@@ -110,7 +159,10 @@ export function DepositModal({ onClose, mode = 'deposit' }: DepositModalProps) {
 							type="button"
 							variant={amount === val.toString() ? 'default' : 'secondary'}
 							size="sm"
-							onClick={() => setAmount(val.toString())}
+							onClick={() => {
+								setAmount(val.toString())
+								setError(null)
+							}}
 							className="numeric rounded-full tap-scale"
 						>
 							${val}
@@ -121,7 +173,10 @@ export function DepositModal({ onClose, mode = 'deposit' }: DepositModalProps) {
 							type="button"
 							variant={amount === balanceUsd.toFixed(2) ? 'default' : 'secondary'}
 							size="sm"
-							onClick={() => setAmount(balanceUsd.toFixed(2))}
+							onClick={() => {
+								setAmount(balanceUsd.toFixed(2))
+								setError(null)
+							}}
 							className="numeric rounded-full tap-scale"
 						>
 							Max
@@ -134,8 +189,8 @@ export function DepositModal({ onClose, mode = 'deposit' }: DepositModalProps) {
 				<div className="px-4 pt-4 pb-8">
 					<SwipeButton
 						label={swipeLabel}
-						disabled={!isValid}
-						onSwipeComplete={() => setShowSuccess(true)}
+						disabled={!isValid || isProcessing}
+						onSwipeComplete={handleSwipeComplete}
 					/>
 				</div>
 			</DialogContent>
