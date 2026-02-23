@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 220 220">
+  <defs>
+    <mask id="b1">
+      <image href="banana_pattern.webp" x="0" y="0" width="50" height="65"/>
+    </mask>
+    <mask id="b2">
+      <image href="banana_pattern.webp" x="0" y="0" width="50" height="65"/>
+    </mask>
+    <mask id="b3">
+      <image href="banana_pattern.webp" x="0" y="0" width="50" height="65"/>
+    </mask>
+  </defs>
+  <!-- 3 bananas at diagonal positions, #DADADA at 5%, lots of whitespace -->
+  <rect x="20" y="25" width="50" height="65" fill="#DADADA" fill-opacity="0.05" mask="url(#b1)"/>
+  <rect x="130" y="80" width="50" height="65" fill="#DADADA" fill-opacity="0.05" mask="url(#b2)"/>
+  <rect x="40" y="150" width="50" height="65" fill="#DADADA" fill-opacity="0.05" mask="url(#b3)"/>
+</svg>

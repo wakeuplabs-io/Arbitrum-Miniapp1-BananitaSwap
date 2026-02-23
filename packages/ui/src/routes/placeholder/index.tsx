@@ -36,7 +36,7 @@ function Placeholder() {
               <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h3 className="text-red-800 dark:text-red-400 font-semibold mb-1">
-                  Error al cargar placeholder
+                  Error loading placeholder
                 </h3>
                 <p className="text-red-600 dark:text-red-300 text-sm">
                   {error.message}
