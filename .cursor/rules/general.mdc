@@ -148,3 +148,4 @@ Use Clean Architecture principles in SDK (Application, Domain, Infrastructure la
 When the user provides an example format or code snippet, use it exactly as provided. Do not modify or infer variations unless explicitly asked
 If unsure about a format or approach, ask for clarification rather than experimenting
 When installing packages, make sure to install a specific version
+postgres on docker-compose is for local development

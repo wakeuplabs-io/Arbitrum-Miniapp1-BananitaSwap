@@ -1,0 +1,34 @@
+# Docker Compose configuration for LOCAL DEVELOPMENT
+# 
+# This file provides a PostgreSQL database container for local development only.
+# It is NOT used in production or staging environments.
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up -d    # Start PostgreSQL
+#   docker compose -f docker-compose.local.yml down     # Stop PostgreSQL
+#
+# Database credentials (local development only):
+#   Host: localhost
+#   Port: 5432
+#   Database: dev
+#   User: user
+#   Password: password
+
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: crowncat-postgres
+    environment:
+      POSTGRES_DB: dev
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

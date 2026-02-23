@@ -42,3 +42,6 @@ packages/ui/cache
 
 # sst
 .sst
+
+# DEX aggregator UI mockup (V0 reference, not part of main app)
+dex-aggregator-ui/
