@@ -90,13 +90,13 @@ export function PortfolioScreen({
 						onClick={handleAvatarClick}
 						aria-label="Change profile photo"
 						className={`avatar-interactive flex h-20 w-20 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow ${profile.avatarDataUrl
-								? 'bg-gradient-to-tr from-primary to-accent shadow-lg shadow-primary/40'
-								: 'bg-card'
+							? 'bg-gradient-to-tr from-primary to-accent shadow-lg shadow-primary/40'
+							: 'bg-card'
 							}`}
 					>
 						<div className={`flex items-center justify-center rounded-full overflow-hidden ${profile.avatarDataUrl
-								? 'h-[4.25rem] w-[4.25rem] border border-border bg-card'
-								: 'h-full w-full'
+							? 'h-[4.25rem] w-[4.25rem] border border-border bg-card'
+							: 'h-full w-full'
 							}`}>
 							{profile.avatarDataUrl ? (
 								<img
@@ -255,12 +255,24 @@ export function PortfolioScreen({
 										role="button"
 										tabIndex={0}
 										onClick={() =>
-											navigate({ to: '/token/$symbol', params: { symbol: holding.token.symbol } })
+											navigate({
+												to: '/swap',
+												search: {
+													token: holding.token.symbol,
+													mode: 'buy'
+												}
+											})
 										}
 										onKeyDown={(e) => {
 											if (e.key === 'Enter' || e.key === ' ') {
 												e.preventDefault()
-												navigate({ to: '/token/$symbol', params: { symbol: holding.token.symbol } })
+												navigate({
+													to: '/swap',
+													search: {
+														token: holding.token.symbol,
+														mode: 'buy'
+													}
+												})
 											}
 										}}
 										className="flex items-center gap-4 py-4 px-4 rounded-3xl bg-card border-2 border-border w-full text-left cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tap-scale transition-transform"
@@ -287,8 +299,8 @@ export function PortfolioScreen({
 											</span>
 											<span
 												className={`text-xs numeric ${holding.token.change24h >= 0
-														? 'text-success'
-														: 'text-destructive'
+													? 'text-success'
+													: 'text-destructive'
 													}`}
 											>
 												{holding.token.change24h >= 0 ? '+' : ''}

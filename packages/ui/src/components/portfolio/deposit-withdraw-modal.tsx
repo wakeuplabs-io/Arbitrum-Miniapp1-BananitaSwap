@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
 import { SwipeButton } from '@/components/swap/swipe-button'
@@ -83,6 +83,14 @@ export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithd
 		return (
 			<Dialog open onOpenChange={(open) => !open && onClose()}>
 				<DialogContent fullScreen showCloseButton={false} className="flex flex-col overflow-hidden p-0">
+					<DialogTitle className="sr-only">
+						{mode === 'deposit' ? 'Deposit successful!' : 'Withdraw successful!'}
+					</DialogTitle>
+					<DialogDescription className="sr-only">
+						{mode === 'deposit'
+							? 'Your funds have been added to your account.'
+							: 'Your withdrawal has been processed.'}
+					</DialogDescription>
 					<SuccessScreen
 						title={mode === 'deposit' ? 'Deposit successful!' : 'Withdraw successful!'}
 						message={
@@ -103,6 +111,12 @@ export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithd
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
 			<DialogContent fullScreen showCloseButton={false} className="flex flex-col overflow-hidden">
+				<DialogTitle className="sr-only">{title}</DialogTitle>
+				<DialogDescription className="sr-only">
+					{mode === 'deposit'
+						? 'Enter the amount you want to deposit to your account.'
+						: 'Enter the amount you want to withdraw from your account.'}
+				</DialogDescription>
 				<div className="flex items-center justify-between px-4 pt-6 pb-2">
 					<div className="w-11" />
 					<h2 className="text-base font-display font-bold uppercase tracking-wide text-foreground">

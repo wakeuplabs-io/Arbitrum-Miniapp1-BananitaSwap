@@ -4,7 +4,8 @@ import { SwapScreen } from '@/components/swap/swap-screen'
 import { TokenSelectModal } from '@/components/swap/token-select-modal'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { BottomNav } from '@/components/navigation/bottom-nav'
-import { TOKENS, type Token } from '@/lib/tokens'
+import { getUsdcToken, useAllTokens } from '@/hooks/use-tokens'
+import { type Token } from '@/lib/tokens'
 
 export const Route = createFileRoute('/swap/')({
 	component: SwapPage,
@@ -39,6 +40,9 @@ function SwapPage() {
 	const [swapDirection, setSwapDirection] = useState<'buy' | 'sell'>(modeFromUrl)
 	const [tokenSelectSide, setTokenSelectSide] = useState<'buy' | 'sell'>('buy')
 
+	// Fetch all tokens from API for token lookup
+	const { data: allTokens = [] } = useAllTokens()
+
 	// Sync swapDirection with URL mode param
 	useEffect(() => {
 		setSwapDirection(modeFromUrl)
@@ -46,11 +50,11 @@ function SwapPage() {
 
 	useEffect(() => {
 		if (!tokenFromUrl) return
-		const usdc = TOKENS.find((t) => t.symbol === 'USDC')
-		const t = TOKENS.find(
+		const usdc = getUsdcToken()
+		const t = allTokens.find(
 			(tok) => tok.symbol.toUpperCase() === tokenFromUrl.toUpperCase()
 		)
-		if (t && t.symbol !== 'USDC' && usdc) {
+		if (t && t.symbol !== 'USDC') {
 			if (modeFromUrl === 'buy') {
 				setBuyToken(t)
 				setSellToken(usdc)
@@ -61,7 +65,7 @@ function SwapPage() {
 				setSwapDirection('sell')
 			}
 		}
-	}, [tokenFromUrl, modeFromUrl])
+	}, [tokenFromUrl, modeFromUrl, allTokens])
 
 	function handleOpenTokenSelect(side: 'sell' | 'buy') {
 		setTokenSelectSide(side)
@@ -69,8 +73,7 @@ function SwapPage() {
 	}
 
 	const handleSelectTokenFromSwap = useCallback((token: Token) => {
-		const usdc = TOKENS.find((t) => t.symbol === 'USDC')
-		if (!usdc) return
+		const usdc = getUsdcToken()
 
 		const newMode = tokenSelectSide === 'buy' ? 'buy' : 'sell'
 		if (tokenSelectSide === 'buy') {
@@ -94,8 +97,7 @@ function SwapPage() {
 	}, [tokenSelectSide, navigate])
 
 	const handleToggleDirection = useCallback(() => {
-		const usdc = TOKENS.find((t) => t.symbol === 'USDC')
-		if (!usdc) return
+		const usdc = getUsdcToken()
 
 		const newMode = swapDirection === 'buy' ? 'sell' : 'buy'
 		let tokenToUpdate: Token | null = null

@@ -6,7 +6,7 @@ import { SwipeButton } from './swipe-button'
 import { PairPriceChart, type ChartTimeRange } from './pair-price-chart'
 import type { Token } from '@/lib/tokens'
 import { useBalance } from '@/hooks/use-balance'
-import { TOKENS } from '@/lib/tokens'
+import { getUsdcToken } from '@/hooks/use-tokens'
 
 const CHART_TIME_RANGES: { value: ChartTimeRange; label: string }[] = [
 	{ value: '24H', label: '24H' },
@@ -32,7 +32,7 @@ export function SwapScreen({
 	onToggleDirection,
 	onSwapComplete,
 }: SwapScreenProps) {
-	const usdc = TOKENS[0]
+	const usdc = getUsdcToken()
 	const { balanceUsd, changePercent, isLoading } = useBalance()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
@@ -202,11 +202,10 @@ export function SwapScreen({
 											variant="outline"
 											size="xs"
 											onClick={() => handlePercent(pct)}
-											className={`btn-percent shrink-0 rounded-xl border-2 border-transparent ${
-												isSelected
-													? 'bg-[#0A0A0A] text-white hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
-													: 'bg-[#F5F5F5] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
-											}`}
+											className={`btn-percent shrink-0 rounded-xl border-2 border-transparent ${isSelected
+												? 'bg-[#0A0A0A] text-white hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
+												: 'bg-[#F5F5F5] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
+												}`}
 										>
 											{pct}%
 										</Button>
@@ -217,11 +216,10 @@ export function SwapScreen({
 									variant="outline"
 									size="xs"
 									onClick={() => handlePercent(100)}
-									className={`btn-percent shrink-0 rounded-xl border-2 border-transparent ${
-										selectedPercent === 100
-											? 'bg-[#0A0A0A] text-white hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
-											: 'bg-[#F5F5F5] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
-									}`}
+									className={`btn-percent shrink-0 rounded-xl border-2 border-transparent ${selectedPercent === 100
+										? 'bg-[#0A0A0A] text-white hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
+										: 'bg-[#F5F5F5] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white focus-visible:bg-[#0A0A0A] focus-visible:text-white'
+										}`}
 								>
 									Max
 								</Button>
@@ -244,9 +242,8 @@ export function SwapScreen({
 								onBlur={() => setIsFocused(false)}
 								placeholder="0"
 								aria-label={topLabel === 'Sell' ? 'Amount to sell' : 'Amount to sell'}
-								className={`bg-transparent numeric font-bold text-foreground outline-none w-full min-w-0 placeholder:text-muted-foreground/50 rounded-xl focus:ring-2 focus:ring-primary focus:ring-offset-2 text-[clamp(1.25rem,5vw,1.875rem)] ${
-									isFocused ? 'caret-primary' : ''
-								}`}
+								className={`bg-transparent numeric font-bold text-foreground outline-none w-full min-w-0 placeholder:text-muted-foreground/50 rounded-xl focus:ring-2 focus:ring-primary focus:ring-offset-2 text-[clamp(1.25rem,5vw,1.875rem)] ${isFocused ? 'caret-primary' : ''
+									}`}
 							/>
 
 							{topToken ? (
@@ -297,9 +294,8 @@ export function SwapScreen({
 
 						<div className="flex items-center justify-between mt-2">
 							<span
-								className={`text-xs numeric ${
-									exceeds ? 'text-destructive font-medium' : 'text-muted-foreground'
-								}`}
+								className={`text-xs numeric ${exceeds ? 'text-destructive font-medium' : 'text-muted-foreground'
+									}`}
 							>
 								{exceeds
 									? 'Exceeds balance'
@@ -430,7 +426,7 @@ export function SwapScreen({
 									Y axis: price (USD). X axis: time.
 								</p>
 								<div className="flex gap-2 px-4 pb-4 pt-2">
-									{									CHART_TIME_RANGES.map(({ value, label }) => (
+									{CHART_TIME_RANGES.map(({ value, label }) => (
 										<Button
 											key={value}
 											type="button"
@@ -439,11 +435,10 @@ export function SwapScreen({
 											onClick={() => setChartRange(value)}
 											aria-pressed={chartRange === value}
 											aria-label={`Range ${label}`}
-											className={`chart-range-btn shrink-0 rounded-xl ${
-												chartRange === value
-													? 'border-border bg-background font-bold text-foreground'
-													: 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-											}`}
+											className={`chart-range-btn shrink-0 rounded-xl ${chartRange === value
+												? 'border-border bg-background font-bold text-foreground'
+												: 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+												}`}
 										>
 											{label}
 										</Button>

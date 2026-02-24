@@ -5,6 +5,7 @@ const env = {
   NODE_ENV: import.meta.env.NODE_ENV,
   API_URL: import.meta.env.VITE_API_URL,
   MOCK_API: import.meta.env.VITE_MOCK_API,
+  USDC_TOKEN_ADDRESS: import.meta.env.VITE_USDC_TOKEN_ADDRESS,
 };
 
 const parseResult = EnvSchema.safeParse(env);

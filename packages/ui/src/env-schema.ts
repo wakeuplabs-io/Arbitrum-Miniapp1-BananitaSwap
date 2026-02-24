@@ -18,6 +18,7 @@ export const EnvSchema = z
       })
       .default("development"),
     RPC_URL: z.string().url().optional(),
+    USDC_TOKEN_ADDRESS: z.string().optional().default("0xaf88d065e77c8cC2239327C5EDb3A432268e5831"),
   })
   ;
 

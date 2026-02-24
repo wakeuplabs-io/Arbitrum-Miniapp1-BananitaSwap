@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 type TokenIconProps = {
 	symbol: string
 	color: string
@@ -7,10 +5,7 @@ type TokenIconProps = {
 	size?: number
 }
 
-export function TokenIcon({ symbol, color, logoUrl, size = 36 }: TokenIconProps) {
-	const [imgError, setImgError] = useState(false)
-	const showFallback = !logoUrl || imgError
-
+export function TokenIcon({ symbol, color, size = 36 }: TokenIconProps) {
 	const iconMap: Record<string, string> = {
 		USDC: '$',
 		ETH: 'E',
@@ -18,19 +13,6 @@ export function TokenIcon({ symbol, color, logoUrl, size = 36 }: TokenIconProps)
 		ARB: 'A',
 		SOL: 'S',
 		BONK: 'B',
-	}
-
-	if (!showFallback) {
-		return (
-			<img
-				src={logoUrl}
-				alt={symbol}
-				width={size}
-				height={size}
-				className="rounded-full shrink-0 object-cover"
-				onError={() => setImgError(true)}
-			/>
-		)
 	}
 
 	return (
