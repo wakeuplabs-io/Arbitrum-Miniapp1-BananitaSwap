@@ -6,6 +6,7 @@ const env = {
   API_URL: import.meta.env.VITE_API_URL,
   MOCK_API: import.meta.env.VITE_MOCK_API,
   USDC_TOKEN_ADDRESS: import.meta.env.VITE_USDC_TOKEN_ADDRESS,
+  COINGECKO_API_KEY: import.meta.env.VITE_COINGECKO_API_KEY,
 };
 
 const parseResult = EnvSchema.safeParse(env);

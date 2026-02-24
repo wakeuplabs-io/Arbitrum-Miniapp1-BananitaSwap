@@ -96,9 +96,12 @@ export function useAllTokens() {
             // Use address + dexId as key to allow same token from different DEXs
             const uniquePairs = new Map<string, DexScreenerPair>()
             for (const pair of pairs) {
-                const address = pair.quoteToken.address.toLowerCase()
+
+                const address = pair.quoteToken.address
+
+                const addressLower = address.toLowerCase()
                 const dexId = pair.dexId || 'unknown'
-                const key = `${address}-${dexId}`
+                const key = `${addressLower}-${dexId}`
 
                 if (!uniquePairs.has(key)) {
                     uniquePairs.set(key, pair)
@@ -236,11 +239,16 @@ export function useTokenSearch(query: string) {
             const pairs = await searchTokenPairs(trimmedQuery)
             // Keep separate entries for same token on different DEXs
             // Use address + dexId as key to allow same token from different DEXs
+            // Note: After normalization in filterUsdcPairs, USDC is always baseToken,
+            // so we extract quoteToken (the searched token) instead
             const uniqueTokens = new Map<string, DexScreenerPair>()
             for (const pair of pairs) {
-                const address = pair.baseToken.address.toLowerCase()
+                // Extract quoteToken address (the searched token, since USDC is normalized to baseToken)
+                const address = pair.quoteToken.address
+
+                const addressLower = address.toLowerCase()
                 const dexId = pair.dexId || 'unknown'
-                const key = `${address}-${dexId}`
+                const key = `${addressLower}-${dexId}`
 
                 if (!uniqueTokens.has(key)) {
                     uniqueTokens.set(key, pair)
@@ -258,7 +266,17 @@ export function useTokenSearch(query: string) {
                     }
                 }
             }
-            return Array.from(uniqueTokens.values()).map(pairToToken)
+            // Use pairToTokenFromTokenPairs since pairs are normalized (USDC is baseToken, searched token is quoteToken)
+            return Array.from(uniqueTokens.values()).map((pair) => {
+                // Create a modified pair where quoteToken becomes baseToken for pairToToken
+                // This way we extract the searched token (ESP) instead of USDC
+                const modifiedPair = {
+                    ...pair,
+                    baseToken: pair.quoteToken,
+                    quoteToken: pair.baseToken,
+                }
+                return pairToToken(modifiedPair)
+            })
         },
         enabled: isValidQuery,
         staleTime: 30 * 1000, // 30 seconds

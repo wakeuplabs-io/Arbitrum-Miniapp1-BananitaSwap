@@ -19,6 +19,7 @@ export const EnvSchema = z
       .default("development"),
     RPC_URL: z.string().url().optional(),
     USDC_TOKEN_ADDRESS: z.string().optional().default("0xaf88d065e77c8cC2239327C5EDb3A432268e5831"),
+    COINGECKO_API_KEY: z.string().optional().default("CG-a5AfanYo1RB7G2bW2j4APdB7"),
   })
   ;
 

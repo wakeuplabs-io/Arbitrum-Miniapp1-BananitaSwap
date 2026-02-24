@@ -49,6 +49,22 @@ export function TokenSelectModal({
 	}, [query, shouldShowSearch, searchResults, allTokens, excludeSymbol])
 
 	function handleSelectToken(token: Token) {
+		console.log('[TokenSelectModal] Selected token data:', {
+			symbol: token.symbol,
+			name: token.name,
+			icon: token.icon,
+			logoUrl: token.logoUrl,
+			color: token.color,
+			price: token.price,
+			change24h: token.change24h,
+			marketCap: token.marketCap,
+			balance: token.balance,
+			address: token.address,
+			chainId: token.chainId,
+			dexId: token.dexId,
+			fullToken: token,
+		})
+
 		if (navigateToDetailOnSelect) {
 			onClose()
 		} else if (onSelect) {

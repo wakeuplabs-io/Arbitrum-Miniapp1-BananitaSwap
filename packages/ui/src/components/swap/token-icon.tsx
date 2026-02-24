@@ -6,14 +6,6 @@ type TokenIconProps = {
 }
 
 export function TokenIcon({ symbol, color, size = 36 }: TokenIconProps) {
-	const iconMap: Record<string, string> = {
-		USDC: '$',
-		ETH: 'E',
-		WBTC: 'B',
-		ARB: 'A',
-		SOL: 'S',
-		BONK: 'B',
-	}
 
 	return (
 		<div
@@ -31,7 +23,7 @@ export function TokenIcon({ symbol, color, size = 36 }: TokenIconProps) {
 					color: '#fff',
 				}}
 			>
-				{iconMap[symbol] || symbol[0]}
+				{symbol[0]}
 			</span>
 		</div>
 	)
