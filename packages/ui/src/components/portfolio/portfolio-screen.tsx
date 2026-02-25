@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { TokenIcon } from '@/components/swap/token-icon'
 import { TokensEmptyState } from './tokens-empty-state'
 import { useUserProfile } from '@/hooks/use-user-profile'
-import { useCurrentHoldings } from '@/contexts/mock-token-state'
+import { useUserHoldings } from '@/hooks/use-user-holdings'
 import type { Token } from '@/lib/tokens'
 
 type PortfolioScreenProps = {
@@ -25,7 +25,7 @@ export function PortfolioScreen({
 	onBuyToken,
 }: PortfolioScreenProps) {
 	const navigate = useNavigate()
-	const { getNonUsdcHoldings, getTotalBalanceUsd } = useCurrentHoldings()
+	const { getNonUsdcHoldings, getTotalBalanceUsd } = useUserHoldings()
 	const nonUsdcHoldings = getNonUsdcHoldings()
 	const profile = useUserProfile()
 	const balanceUsd = getTotalBalanceUsd()

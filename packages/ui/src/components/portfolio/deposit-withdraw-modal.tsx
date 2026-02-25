@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
 import { SwipeButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
-import { useCurrentHoldings } from '@/contexts/mock-token-state'
+import { useMockTokenState } from '@/contexts/mock-token-state'
+import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { TokenName } from '@lemoncash/mini-app-sdk'
 
@@ -22,8 +23,9 @@ export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithd
 	const [showSuccess, setShowSuccess] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const { getTotalBalanceUsd } = useCurrentHoldings()
+	const { getTotalBalanceUsd } = useUserHoldings()
 	const balanceUsd = getTotalBalanceUsd()
+	const { isMocking, deposit: mockDeposit, withdraw: mockWithdraw } = useMockTokenState()
 	const { handleDeposit, handleWithdraw, isInLemonWebView } = useLemonMiniapp()
 
 	const quickAmounts = [25, 50, 100]
@@ -49,11 +51,6 @@ export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithd
 	}
 
 	async function handleSwipeComplete() {
-		if (!isInLemonWebView) {
-			setError(`Please open this app in Lemon Cash to ${mode === 'deposit' ? 'deposit' : 'withdraw'}`)
-			return
-		}
-
 		if (!isValid || numericValue <= 0) {
 			return
 		}
@@ -62,12 +59,28 @@ export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithd
 		setError(null)
 
 		try {
-			if (mode === 'deposit') {
-				await handleDeposit(amount, TokenName.USDC)
+			if (isMocking) {
+				// Use mock deposit/withdraw when mocking
+				if (mode === 'deposit') {
+					await mockDeposit(numericValue, 'USDC')
+				} else {
+					await mockWithdraw(numericValue, 'USDC')
+				}
+				setShowSuccess(true)
 			} else {
-				await handleWithdraw(amount, TokenName.USDC)
+				// Use real Lemon SDK when not mocking
+				if (!isInLemonWebView) {
+					setError(`Please open this app in Lemon Cash to ${mode === 'deposit' ? 'deposit' : 'withdraw'}`)
+					return
+				}
+
+				if (mode === 'deposit') {
+					await handleDeposit(amount, TokenName.USDC)
+				} else {
+					await handleWithdraw(amount, TokenName.USDC)
+				}
+				setShowSuccess(true)
 			}
-			setShowSuccess(true)
 		} catch (err) {
 			const errorMessage =
 				err instanceof Error

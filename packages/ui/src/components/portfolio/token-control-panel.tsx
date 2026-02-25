@@ -2,7 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Settings2, X, Plus, Trash2, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useMockTokenState, useCurrentHoldings } from '@/contexts/mock-token-state'
+import { useMockTokenState } from '@/contexts/mock-token-state'
+import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useAllTokens } from '@/hooks/use-tokens'
 import { TokenIcon } from '@/components/swap/token-icon'
 
@@ -21,7 +22,7 @@ export function TokenControlPanel() {
         isMocking,
     } = useMockTokenState()
 
-    const { holdings, getAvailableTokens } = useCurrentHoldings()
+    const { holdings, getAvailableTokens } = useUserHoldings()
     const { data: allTokens } = useAllTokens()
     const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>('')
     const [newTokenAmount, setNewTokenAmount] = useState<string>('')

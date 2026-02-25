@@ -3,14 +3,14 @@ import React from "react";
 import { TokenControlPanel } from "@/components/portfolio/token-control-panel";
 
 const TanStackRouterDevtools =
-  process.env.NODE_ENV === "production"
-    ? () => null // Render nothing in production
-    : React.lazy(() =>
-      /* eslint-disable indent */
-      import("@tanstack/router-devtools").then((res) => ({
-        default: res.TanStackRouterDevtools,
-      }))
-    );
+	process.env.NODE_ENV === "production"
+		? () => null // Render nothing in production
+		: React.lazy(() =>
+			/* eslint-disable indent */
+			import("@tanstack/router-devtools").then((res) => ({
+				default: res.TanStackRouterDevtools,
+			}))
+		);
 
 function RootComponent() {
 	return (
@@ -40,5 +40,5 @@ function RootComponent() {
 }
 
 export const Route = createRootRoute({
-  component: RootComponent,
+	component: RootComponent,
 });

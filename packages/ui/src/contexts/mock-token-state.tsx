@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
-import { USER_HOLDINGS } from '@/lib/tokens'
 import type { Token } from '@/lib/tokens'
-
-type TokenHolding = { token: Token; amount: number }
+import { useUserHoldings, type TokenHolding } from '@/hooks/use-user-holdings'
 
 type MockTokenStateContextType = {
     mockHoldings: TokenHolding[] | null
@@ -11,6 +9,9 @@ type MockTokenStateContextType = {
     addToken: (token: Token, amount: number) => void
     removeToken: (symbol: string) => void
     resetToDefault: () => void
+    deposit: (amount: number, symbol: string) => Promise<void>
+    withdraw: (amount: number, symbol: string) => Promise<void>
+    swap: (sellTokenSymbol: string, buyTokenSymbol: string, sellAmount: number, buyAmount: number, buyToken?: Token) => Promise<void>
     isMocking: boolean
 }
 
@@ -18,22 +19,23 @@ const MockTokenStateContext = createContext<MockTokenStateContextType | undefine
 
 export function MockTokenStateProvider({ children }: { children: ReactNode }) {
     const [mockHoldings, setMockHoldings] = useState<TokenHolding[] | null>(null)
+    const { holdings: userHoldings } = useUserHoldings()
 
     const updateTokenAmount = useCallback((symbol: string, amount: number) => {
         setMockHoldings((prev) => {
             // Initialize with current holdings if not already mocking
-            const holdings = prev || [...USER_HOLDINGS]
+            const holdings = prev || [...userHoldings]
             const updated = holdings.map((h) =>
                 h.token.symbol === symbol ? { ...h, amount } : h
             )
             return updated
         })
-    }, [])
+    }, [userHoldings])
 
     const addToken = useCallback((token: Token, amount: number) => {
         setMockHoldings((prev) => {
             // Initialize with current holdings if not already mocking
-            const holdings = prev || [...USER_HOLDINGS]
+            const holdings = prev || [...userHoldings]
             // Check if token already exists
             if (holdings.some((h) => h.token.symbol === token.symbol)) {
                 return holdings.map((h) =>
@@ -42,21 +44,92 @@ export function MockTokenStateProvider({ children }: { children: ReactNode }) {
             }
             return [...holdings, { token, amount }]
         })
-    }, [])
+    }, [userHoldings])
 
     const removeToken = useCallback((symbol: string) => {
         setMockHoldings((prev) => {
             // Initialize with current holdings if not already mocking
-            const holdings = prev || [...USER_HOLDINGS]
+            const holdings = prev || [...userHoldings]
             const filtered = holdings.filter((h) => h.token.symbol !== symbol)
             // Don't allow removing all tokens - keep at least one
             return filtered.length === 0 ? holdings : filtered
         })
-    }, [])
+    }, [userHoldings])
 
     const resetToDefault = useCallback(() => {
         setMockHoldings(null)
     }, [])
+
+    const deposit = useCallback(async (amount: number, symbol: string) => {
+        setMockHoldings((prev) => {
+            const holdings = prev || [...userHoldings]
+            const existingHolding = holdings.find((h) => h.token.symbol === symbol)
+            if (existingHolding) {
+                return holdings.map((h) =>
+                    h.token.symbol === symbol ? { ...h, amount: h.amount + amount } : h
+                )
+            }
+            return holdings
+        })
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 500))
+    }, [userHoldings])
+
+    const withdraw = useCallback(async (amount: number, symbol: string) => {
+        setMockHoldings((prev) => {
+            const holdings = prev || [...userHoldings]
+            const existingHolding = holdings.find((h) => h.token.symbol === symbol)
+            if (existingHolding && existingHolding.amount >= amount) {
+                const updatedAmount = existingHolding.amount - amount
+                return holdings.map((h) =>
+                    h.token.symbol === symbol ? { ...h, amount: updatedAmount } : h
+                )
+            }
+            throw new Error(`Insufficient ${symbol} balance`)
+        })
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 500))
+    }, [userHoldings])
+
+    const swap = useCallback(async (sellTokenSymbol: string, buyTokenSymbol: string, sellAmount: number, buyAmount: number, buyToken?: Token) => {
+        setMockHoldings((prev) => {
+            const holdings = prev || [...userHoldings]
+
+            // Find sell token holding
+            const sellHolding = holdings.find((h) => h.token.symbol === sellTokenSymbol)
+            if (!sellHolding || sellHolding.amount < sellAmount) {
+                throw new Error(`Insufficient ${sellTokenSymbol} balance`)
+            }
+
+            // Find buy token holding
+            const buyHolding = holdings.find((h) => h.token.symbol === buyTokenSymbol)
+
+            // Update holdings: subtract from sell token
+            let updatedHoldings = holdings.map((h) => {
+                if (h.token.symbol === sellTokenSymbol) {
+                    return { ...h, amount: h.amount - sellAmount }
+                }
+                return h
+            })
+
+            if (buyHolding) {
+                // Update existing buy token holding
+                updatedHoldings = updatedHoldings.map((h) =>
+                    h.token.symbol === buyTokenSymbol ? { ...h, amount: h.amount + buyAmount } : h
+                )
+            } else if (buyToken) {
+                // Add new token if it doesn't exist and we have the token object
+                updatedHoldings = [...updatedHoldings, { token: buyToken, amount: buyAmount }]
+            } else {
+                // If token doesn't exist and we don't have the token object, we can't add it
+                throw new Error(`Token ${buyTokenSymbol} not found in holdings. Please add it first.`)
+            }
+
+            return updatedHoldings
+        })
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 500))
+    }, [userHoldings])
 
     const value: MockTokenStateContextType = {
         mockHoldings,
@@ -65,6 +138,9 @@ export function MockTokenStateProvider({ children }: { children: ReactNode }) {
         addToken,
         removeToken,
         resetToDefault,
+        deposit,
+        withdraw,
+        swap,
         isMocking: mockHoldings !== null,
     }
 
@@ -83,50 +159,3 @@ export function useMockTokenState() {
     return context
 }
 
-// Helper hook to get current holdings (mock or default)
-// Works both inside and outside MockTokenStateProvider
-export function useCurrentHoldings() {
-    let holdings: TokenHolding[]
-    try {
-        const { mockHoldings } = useMockTokenState()
-        //USER_HOLDINGS will be the list of tokens that are available to the user
-        holdings = mockHoldings ?? USER_HOLDINGS
-    } catch {
-        // Provider not available, return default holdings
-        holdings = USER_HOLDINGS
-    }
-
-    const getTokenBalance = (symbol: string, fallback?: number): number => {
-        return holdings.find((h) => h.token.symbol === symbol)?.amount ?? fallback ?? 0
-    }
-
-    const getUsdcBalance = (): number => {
-        return getTokenBalance('USDC')
-    }
-
-    const getNonUsdcHoldings = (): TokenHolding[] => {
-        return holdings.filter((h) => h.token.symbol !== 'USDC')
-    }
-
-    const getHoldingsKey = (): string => {
-        return holdings.map((h) => `${h.token.symbol}:${h.amount}`).join(',')
-    }
-
-    const getAvailableTokens = (allTokens: Token[]): Token[] => {
-        return allTokens.filter((t) => !holdings.some((h) => h.token.symbol === t.symbol))
-    }
-
-    const getTotalBalanceUsd = (): number => {
-        return holdings.reduce((sum, { token, amount }) => sum + amount * token.price, 0)
-    }
-
-    return {
-        holdings,
-        getTokenBalance,
-        getUsdcBalance,
-        getNonUsdcHoldings,
-        getHoldingsKey,
-        getAvailableTokens,
-        getTotalBalanceUsd,
-    }
-}

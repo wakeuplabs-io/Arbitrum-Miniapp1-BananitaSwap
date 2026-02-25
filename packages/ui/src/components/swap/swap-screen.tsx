@@ -6,7 +6,8 @@ import { SwipeButton } from './swipe-button'
 import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
 import type { Token } from '@/lib/tokens'
 import { getUsdcToken } from '@/hooks/use-tokens'
-import { useCurrentHoldings } from '@/contexts/mock-token-state'
+import { useMockTokenState } from '@/contexts/mock-token-state'
+import { useUserHoldings } from '@/hooks/use-user-holdings'
 
 
 type SwapScreenProps = {
@@ -27,11 +28,13 @@ export function SwapScreen({
 	onSwapComplete,
 }: SwapScreenProps) {
 	const usdc = getUsdcToken()
-	const { getUsdcBalance, getTokenBalance } = useCurrentHoldings()
+	const { getUsdcBalance, getTokenBalance } = useUserHoldings()
+	const { isMocking, swap: mockSwap } = useMockTokenState()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
 	const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
 	const [isDirectionBtnPressed, setIsDirectionBtnPressed] = useState(false)
+	const [isProcessing, setIsProcessing] = useState(false)
 	const directionBtnPressedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const topToken = direction === 'buy' ? usdc : sellToken
 	const bottomToken = direction === 'buy' ? buyToken : usdc
@@ -396,8 +399,29 @@ export function SwapScreen({
 			<div className="fixed bottom-16 left-0 right-0 px-4 pt-3 pb-4 bg-[#FFFFFF] max-w-[430px] mx-auto z-30">
 				<SwipeButton
 					label={swipeLabel}
-					disabled={!isValid}
-					onSwipeComplete={onSwapComplete}
+					disabled={!isValid || isProcessing}
+					onSwipeComplete={async () => {
+						if (isMocking && topToken && bottomToken && amountValue > 0) {
+							setIsProcessing(true)
+							try {
+								await mockSwap(
+									topToken.symbol,
+									bottomToken.symbol,
+									amountValue,
+									outputValue,
+									bottomToken
+								)
+								onSwapComplete()
+							} catch (err) {
+								console.error('Swap error:', err)
+								// Error handling could be added here if needed
+							} finally {
+								setIsProcessing(false)
+							}
+						} else {
+							onSwapComplete()
+						}
+					}}
 				/>
 			</div>
 		</div>
