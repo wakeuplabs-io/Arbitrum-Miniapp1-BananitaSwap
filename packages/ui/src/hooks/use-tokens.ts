@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { getTokenPairs, getTokensInfo, searchTokenPairs, type DexScreenerPair } from '@/services/dexscreener'
-import envParsed from '@/env-parsed'
 import type { Token } from '@/lib/tokens'
 
 /**
@@ -194,16 +193,6 @@ export function useAllTokens() {
                     } else if (currentPrice > existingPrice) {
                         tokensByAddress.set(address, token)
                     }
-                }
-
-                // Log if pairAddress is missing for debugging
-                if (!pair.pairAddress) {
-                    console.warn('[useAllTokens] Missing pairAddress for token:', {
-                        symbol: token.symbol,
-                        address: token.address,
-                        dexId: pair.dexId,
-                        chainId: pair.chainId,
-                    })
                 }
             }
 

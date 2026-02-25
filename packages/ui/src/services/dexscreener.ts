@@ -82,11 +82,6 @@ function filterAllowedDexs(pairs: DexScreenerPair[]): DexScreenerPair[] {
         const dexId = pair.dexId?.toLowerCase() || ''
         const isAllowed = ALLOWED_DEX_IDS.includes(dexId)
         if (!isAllowed) {
-            console.warn('[DexScreener] Filtering out non-allowed DEX pair:', {
-                dexId: pair.dexId,
-                baseToken: pair.baseToken?.symbol,
-                quoteToken: pair.quoteToken?.symbol,
-            })
             return false
         }
         return true
@@ -119,17 +114,9 @@ function isUsdcAddress(address: string | undefined): boolean {
 function filterUsdcPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
     return pairs
         .filter((pair) => {
-            const baseAddress = pair.baseToken?.address?.toLowerCase()
-            const quoteAddress = pair.quoteToken?.address?.toLowerCase()
             const isUsdcQuote = isUsdcAddress(pair.quoteToken?.address)
 
             if (!isUsdcQuote) {
-                console.warn('[DexScreener] Filtering out non-USDC pair:', {
-                    baseToken: pair.baseToken?.symbol,
-                    quoteToken: pair.quoteToken?.symbol,
-                    baseAddress: baseAddress,
-                    quoteAddress: quoteAddress,
-                })
                 return false
             }
             return true
@@ -284,8 +271,7 @@ export async function getTokensInfo(
  */
 export async function getTokenPairs(): Promise<DexScreenerPair[]> {
     try {
-        // const address = envParsed.USDC_TOKEN_ADDRESS
-        const address = '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'
+        const address = envParsed.USDC_TOKEN_ADDRESS
         const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${CHAIN_ID}/${address}`
 
         const response = await fetch(url)
@@ -295,21 +281,11 @@ export async function getTokenPairs(): Promise<DexScreenerPair[]> {
         }
 
         const data = await response.json()
-        console.log('[getTokenPairs] Data:', data)
         const validated = TokenPairsResponseSchema.parse(data)
 
-        // Filter to ensure only Arbitrum pairs are returned (defense in depth)
         const arbitrumPairs = filterArbitrumPairs(validated)
-        console.log('[getTokenPairs] After Arbitrum filter:', arbitrumPairs.length)
-
-        // Filter to ensure only USDC pairs are returned (where USDC is baseToken or quoteToken)
-        // and normalize so USDC is always baseToken
         const usdcPairs = filterUsdcPairs(arbitrumPairs)
-        console.log('[getTokenPairs] After USDC filter:', usdcPairs.length)
-
-        // Filter to only include allowed DEXs (Uniswap or Camelot)
         const allowedDexPairs = filterAllowedDexs(usdcPairs)
-        console.log('[getTokenPairs] After DEX filter:', allowedDexPairs.length, 'pairs from:', allowedDexPairs.map(p => p.dexId))
 
         return allowedDexPairs
     } catch (error) {
