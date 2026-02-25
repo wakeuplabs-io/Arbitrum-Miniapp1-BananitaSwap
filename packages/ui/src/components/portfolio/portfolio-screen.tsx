@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input'
 import { TokenIcon } from '@/components/swap/token-icon'
 import { TokensEmptyState } from './tokens-empty-state'
 import { useUserProfile } from '@/hooks/use-user-profile'
-import { useBalance } from '@/hooks/use-balance'
-import { USER_HOLDINGS } from '@/lib/tokens'
+import { useCurrentHoldings } from '@/contexts/mock-token-state'
 import type { Token } from '@/lib/tokens'
 
 type PortfolioScreenProps = {
@@ -26,9 +25,11 @@ export function PortfolioScreen({
 	onBuyToken,
 }: PortfolioScreenProps) {
 	const navigate = useNavigate()
-	const nonUsdcHoldings = USER_HOLDINGS.filter((h) => h.token.symbol !== 'USDC')
+	const { getNonUsdcHoldings, getTotalBalanceUsd } = useCurrentHoldings()
+	const nonUsdcHoldings = getNonUsdcHoldings()
 	const profile = useUserProfile()
-	const { balanceUsd, changePercent, isLoading } = useBalance()
+	const balanceUsd = getTotalBalanceUsd()
+	const changePercent = 0 // TODO: Calculate from historical data if needed
 	const [isEditingName, setIsEditingName] = useState(false)
 	const [draftName, setDraftName] = useState(profile.displayName)
 	const [avatarError, setAvatarError] = useState<string | null>(null)
@@ -182,22 +183,10 @@ export function PortfolioScreen({
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
 						Total balance in USDC
 					</p>
-					{isLoading ? (
-						<div
-							className="h-12 w-36 animate-pulse rounded bg-muted"
-							aria-hidden
-						/>
-					) : (
-						<p className="text-5xl text-foreground tracking-tight numeric-balance">
-							${balanceUsd.toFixed(2)}
-						</p>
-					)}
-					{isLoading ? (
-						<div
-							className="h-4 w-20 animate-pulse rounded bg-muted"
-							aria-hidden
-						/>
-					) : balanceUsd === 0 ? (
+					<p className="text-5xl text-foreground tracking-tight numeric-balance">
+						${balanceUsd.toFixed(2)}
+					</p>
+					{balanceUsd === 0 ? (
 						<p className="text-sm text-muted-foreground">
 							Deposit to get started
 						</p>

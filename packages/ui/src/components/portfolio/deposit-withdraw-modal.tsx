@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
 import { SwipeButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
-import { useBalance } from '@/hooks/use-balance'
+import { useCurrentHoldings } from '@/contexts/mock-token-state'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { TokenName } from '@lemoncash/mini-app-sdk'
 
@@ -22,7 +22,8 @@ export function DepositWithdrawModal({ onClose, mode = 'deposit' }: DepositWithd
 	const [showSuccess, setShowSuccess] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const { balanceUsd } = useBalance()
+	const { getTotalBalanceUsd } = useCurrentHoldings()
+	const balanceUsd = getTotalBalanceUsd()
 	const { handleDeposit, handleWithdraw, isInLemonWebView } = useLemonMiniapp()
 
 	const quickAmounts = [25, 50, 100]

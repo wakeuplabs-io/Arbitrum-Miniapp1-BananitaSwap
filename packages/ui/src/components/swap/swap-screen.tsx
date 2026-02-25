@@ -5,8 +5,8 @@ import { TokenIcon } from './token-icon'
 import { SwipeButton } from './swipe-button'
 import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
 import type { Token } from '@/lib/tokens'
-import { useBalance } from '@/hooks/use-balance'
 import { getUsdcToken } from '@/hooks/use-tokens'
+import { useCurrentHoldings } from '@/contexts/mock-token-state'
 
 
 type SwapScreenProps = {
@@ -27,7 +27,7 @@ export function SwapScreen({
 	onSwapComplete,
 }: SwapScreenProps) {
 	const usdc = getUsdcToken()
-	const { balanceUsd, isLoading } = useBalance()
+	const { getUsdcBalance, getTokenBalance } = useCurrentHoldings()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
 	const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
@@ -37,7 +37,13 @@ export function SwapScreen({
 	const bottomToken = direction === 'buy' ? buyToken : usdc
 	const pairToken = direction === 'buy' ? buyToken : sellToken
 
-	const topBalance = topToken?.balance ?? 0
+	// Get USDC balance only
+	const usdcBalance = getUsdcBalance()
+
+	// Get balance from mock holdings if available, otherwise use token balance
+	const topBalance = topToken
+		? getTokenBalance(topToken.symbol, topToken.balance)
+		: 0
 	const amountValue = parseFloat(amount) || 0
 
 	const outputValue =
@@ -146,26 +152,14 @@ export function SwapScreen({
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
 						Total balance in USDC
 					</p>
-					{isLoading ? (
-						<div
-							className="mt-1 h-12 w-36 animate-pulse rounded bg-muted"
-							aria-hidden
-						/>
-					) : (
-						<p className="text-5xl text-foreground mt-1 tracking-tight numeric-balance">
-							${balanceUsd.toFixed(2)}
-						</p>
-					)}
-					{isLoading ? (
-						<div
-							className="mt-1 h-4 w-20 animate-pulse rounded bg-muted"
-							aria-hidden
-						/>
-					) : balanceUsd === 0 ? (
+					<p className="text-5xl text-foreground mt-1 tracking-tight numeric-balance">
+						${usdcBalance.toFixed(2)}
+					</p>
+					{usdcBalance === 0 && (
 						<p className="text-sm text-muted-foreground mt-1">
 							Deposit to get started
 						</p>
-					) : null}
+					)}
 				</div>
 
 				<div className="px-4 w-full max-w-full box-border">

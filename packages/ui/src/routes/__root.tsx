@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import React from "react";
+import { TokenControlPanel } from "@/components/portfolio/token-control-panel";
 
 const TanStackRouterDevtools =
   process.env.NODE_ENV === "production"
@@ -31,6 +32,7 @@ function RootComponent() {
 						aria-hidden
 					/>
 				</main>
+				<TokenControlPanel />
 				<TanStackRouterDevtools />
 			</div>
 		</div>
