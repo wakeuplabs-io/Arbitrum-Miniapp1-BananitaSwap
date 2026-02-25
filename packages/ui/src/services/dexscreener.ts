@@ -70,6 +70,30 @@ function filterArbitrumPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
 }
 
 /**
+ * Allowed DEX IDs for token listings
+ */
+const ALLOWED_DEX_IDS = ['uniswap', 'camelot']
+
+/**
+ * Filter pairs to only include allowed DEXs (Uniswap or Camelot)
+ */
+function filterAllowedDexs(pairs: DexScreenerPair[]): DexScreenerPair[] {
+    return pairs.filter((pair) => {
+        const dexId = pair.dexId?.toLowerCase() || ''
+        const isAllowed = ALLOWED_DEX_IDS.includes(dexId)
+        if (!isAllowed) {
+            console.warn('[DexScreener] Filtering out non-allowed DEX pair:', {
+                dexId: pair.dexId,
+                baseToken: pair.baseToken?.symbol,
+                quoteToken: pair.quoteToken?.symbol,
+            })
+            return false
+        }
+        return true
+    })
+}
+
+/**
  * Known USDC addresses on Arbitrum
  * - Native USDC: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831
  * - Bridged USDC (USDC.e): 0xff970a61a04b1ca14834a43f5de4533ebddb5cc8
@@ -97,11 +121,9 @@ function filterUsdcPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
         .filter((pair) => {
             const baseAddress = pair.baseToken?.address?.toLowerCase()
             const quoteAddress = pair.quoteToken?.address?.toLowerCase()
-            const isUsdcBase = isUsdcAddress(pair.baseToken?.address)
             const isUsdcQuote = isUsdcAddress(pair.quoteToken?.address)
-            const isUsdcPair = isUsdcBase || isUsdcQuote
 
-            if (!isUsdcPair) {
+            if (!isUsdcQuote) {
                 console.warn('[DexScreener] Filtering out non-USDC pair:', {
                     baseToken: pair.baseToken?.symbol,
                     quoteToken: pair.quoteToken?.symbol,
@@ -134,7 +156,7 @@ export type PriceDataPoint = {
 
 /**
  * Search for token pairs on DexScreener
- * Only returns tokens from Arbitrum networks (mainnet or Sepolia)
+ * Only returns tokens from Arbitrum networks
  * Requires at least 3 characters to search
  * @param query - Search query (token name, symbol, or address)
  * @returns Array of pairs matching the query, filtered to only Arbitrum networks
@@ -143,6 +165,7 @@ export async function searchTokenPairs(
     query: string
 ): Promise<DexScreenerPair[]> {
     const trimmedQuery = query.trim()
+
 
     // Require at least 3 characters to search
     if (!trimmedQuery || trimmedQuery.length < 3) {
@@ -164,128 +187,9 @@ export async function searchTokenPairs(
 
         const pairs = validated.pairs || []
 
-        console.log('[searchTokenPairs] Raw search results:', {
-            query: trimmedQuery,
-            totalPairs: pairs.length,
-            arbitrumPairs: pairs.filter((p) => isArbitrumPair(p)).length,
-        })
-
-        // Filter to ensure only Arbitrum pairs are returned (defense in depth)
         const arbitrumPairs = filterArbitrumPairs(pairs)
-
-        console.log('[searchTokenPairs] After Arbitrum filter:', {
-            query: trimmedQuery,
-            arbitrumPairs: arbitrumPairs.length,
-            pairs: arbitrumPairs.map((p) => ({
-                base: p.baseToken?.symbol,
-                quote: p.quoteToken?.symbol,
-                chainId: p.chainId,
-            })),
-        })
-
-        // Filter to ensure only USDC pairs are returned (where USDC is baseToken or quoteToken)
         let usdcPairs = filterUsdcPairs(arbitrumPairs)
-
-        console.log('[searchTokenPairs] After USDC filter:', {
-            query: trimmedQuery,
-            usdcPairs: usdcPairs.length,
-            pairs: usdcPairs.map((p) => ({
-                base: p.baseToken?.symbol,
-                quote: p.quoteToken?.symbol,
-            })),
-        })
-
-        // Strategy 3: Fallback - If search didn't return USDC pairs, try to find token addresses
-        // and query token-pairs endpoint directly
-        if (usdcPairs.length === 0) {
-            console.log('[searchTokenPairs] No USDC pairs found, trying fallback with token-pairs endpoint...')
-
-            const tokenAddresses = new Set<string>()
-            const queryLower = trimmedQuery.toLowerCase()
-
-            // Extract token addresses from Arbitrum search results (if any)
-            // Only extract addresses that match the search query symbol
-            if (arbitrumPairs.length > 0) {
-                for (const pair of arbitrumPairs) {
-                    const baseSymbol = pair.baseToken?.symbol?.toLowerCase()
-                    const quoteSymbol = pair.quoteToken?.symbol?.toLowerCase()
-
-                    // Only add addresses that match the search query
-                    if (baseSymbol === queryLower && pair.baseToken?.address && isValidEthereumAddress(pair.baseToken.address)) {
-                        tokenAddresses.add(pair.baseToken.address.toLowerCase())
-                    }
-                    if (quoteSymbol === queryLower && pair.quoteToken?.address && isValidEthereumAddress(pair.quoteToken.address)) {
-                        tokenAddresses.add(pair.quoteToken.address.toLowerCase())
-                    }
-                }
-            }
-
-            // Also check all search results (not just Arbitrum) to find token addresses
-            // This helps when search returns pairs from other chains but we can still find the token
-            // Only extract addresses that match the search query symbol
-            if (tokenAddresses.size === 0 && pairs.length > 0) {
-                console.log('[searchTokenPairs] No matching Arbitrum pairs found, checking all search results for matching token addresses...')
-
-                for (const pair of pairs) {
-                    // Check if the pair matches the search query (token symbol matches)
-                    const baseSymbol = pair.baseToken?.symbol?.toLowerCase()
-                    const quoteSymbol = pair.quoteToken?.symbol?.toLowerCase()
-
-                    // Only extract addresses that match the search query
-                    if (baseSymbol === queryLower && pair.baseToken?.address && isValidEthereumAddress(pair.baseToken.address)) {
-                        tokenAddresses.add(pair.baseToken.address.toLowerCase())
-                        console.log('[searchTokenPairs] Found matching token address from baseToken:', {
-                            symbol: pair.baseToken.symbol,
-                            address: pair.baseToken.address.toLowerCase(),
-                            chainId: pair.chainId,
-                        })
-                    }
-                    if (quoteSymbol === queryLower && pair.quoteToken?.address && isValidEthereumAddress(pair.quoteToken.address)) {
-                        tokenAddresses.add(pair.quoteToken.address.toLowerCase())
-                        console.log('[searchTokenPairs] Found matching token address from quoteToken:', {
-                            symbol: pair.quoteToken.symbol,
-                            address: pair.quoteToken.address.toLowerCase(),
-                            chainId: pair.chainId,
-                        })
-                    }
-                }
-            }
-
-            console.log('[searchTokenPairs] Found token addresses for fallback:', {
-                count: tokenAddresses.size,
-                addresses: Array.from(tokenAddresses),
-            })
-
-            // For each token address, query token-pairs endpoint to find USDC pairs on Arbitrum
-            const fallbackPairs: DexScreenerPair[] = []
-            for (const tokenAddress of tokenAddresses) {
-                try {
-                    const tokenPairsUrl = `${DEXSCREENER_API_BASE}/token-pairs/v1/${CHAIN_ID}/${tokenAddress}`
-                    const tokenPairsResponse = await fetch(tokenPairsUrl)
-
-                    if (tokenPairsResponse.ok) {
-                        const data = await tokenPairsResponse.json()
-                        const tokenPairs = TokenPairsResponseSchema.parse(data)
-                        const arbitrumFiltered = filterArbitrumPairs(tokenPairs)
-                        const usdcFiltered = filterUsdcPairs(arbitrumFiltered)
-                        fallbackPairs.push(...usdcFiltered)
-                    }
-                } catch (error) {
-                    console.warn('[searchTokenPairs] Error fetching token pairs for fallback:', tokenAddress, error)
-                }
-            }
-
-            if (fallbackPairs.length > 0) {
-                console.log('[searchTokenPairs] Fallback found USDC pairs:', {
-                    count: fallbackPairs.length,
-                    pairs: fallbackPairs.map((p) => ({
-                        base: p.baseToken?.symbol,
-                        quote: p.quoteToken?.symbol,
-                    })),
-                })
-                usdcPairs = fallbackPairs
-            }
-        }
+        usdcPairs = filterAllowedDexs(usdcPairs)
 
         return usdcPairs
     } catch (error) {
@@ -380,7 +284,8 @@ export async function getTokensInfo(
  */
 export async function getTokenPairs(): Promise<DexScreenerPair[]> {
     try {
-        const address = envParsed.USDC_TOKEN_ADDRESS
+        // const address = envParsed.USDC_TOKEN_ADDRESS
+        const address = '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'
         const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${CHAIN_ID}/${address}`
 
         const response = await fetch(url)
@@ -390,10 +295,23 @@ export async function getTokenPairs(): Promise<DexScreenerPair[]> {
         }
 
         const data = await response.json()
+        console.log('[getTokenPairs] Data:', data)
         const validated = TokenPairsResponseSchema.parse(data)
 
         // Filter to ensure only Arbitrum pairs are returned (defense in depth)
-        return filterArbitrumPairs(validated)
+        const arbitrumPairs = filterArbitrumPairs(validated)
+        console.log('[getTokenPairs] After Arbitrum filter:', arbitrumPairs.length)
+
+        // Filter to ensure only USDC pairs are returned (where USDC is baseToken or quoteToken)
+        // and normalize so USDC is always baseToken
+        const usdcPairs = filterUsdcPairs(arbitrumPairs)
+        console.log('[getTokenPairs] After USDC filter:', usdcPairs.length)
+
+        // Filter to only include allowed DEXs (Uniswap or Camelot)
+        const allowedDexPairs = filterAllowedDexs(usdcPairs)
+        console.log('[getTokenPairs] After DEX filter:', allowedDexPairs.length, 'pairs from:', allowedDexPairs.map(p => p.dexId))
+
+        return allowedDexPairs
     } catch (error) {
         console.error('Error fetching token pairs:', error)
         throw error

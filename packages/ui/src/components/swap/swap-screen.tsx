@@ -3,17 +3,11 @@ import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TokenIcon } from './token-icon'
 import { SwipeButton } from './swipe-button'
-import { PairPriceChart, type ChartTimeRange } from './pair-price-chart'
+import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
 import type { Token } from '@/lib/tokens'
 import { useBalance } from '@/hooks/use-balance'
 import { getUsdcToken } from '@/hooks/use-tokens'
 
-const CHART_TIME_RANGES: { value: ChartTimeRange; label: string }[] = [
-	{ value: '24H', label: '24H' },
-	{ value: '7D', label: '7D' },
-	{ value: '1M', label: '1M' },
-	{ value: '3M', label: '3M' },
-]
 
 type SwapScreenProps = {
 	onOpenTokenSelect: (side: 'sell' | 'buy') => void
@@ -33,10 +27,9 @@ export function SwapScreen({
 	onSwapComplete,
 }: SwapScreenProps) {
 	const usdc = getUsdcToken()
-	const { balanceUsd, changePercent, isLoading } = useBalance()
+	const { balanceUsd, isLoading } = useBalance()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
-	const [chartRange, setChartRange] = useState<ChartTimeRange>('24H')
 	const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
 	const [isDirectionBtnPressed, setIsDirectionBtnPressed] = useState(false)
 	const directionBtnPressedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -172,18 +165,7 @@ export function SwapScreen({
 						<p className="text-sm text-muted-foreground mt-1">
 							Deposit to get started
 						</p>
-					) : (
-						<p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-							<span
-								className={
-									changePercent >= 0 ? 'text-success' : 'text-destructive'
-								}
-							>
-								{changePercent >= 0 ? '▲' : '▼'}
-							</span>
-							{`${Math.abs(changePercent).toFixed(1)}% All time`}
-						</p>
-					)}
+					) : null}
 				</div>
 
 				<div className="px-4 w-full max-w-full box-border">
@@ -408,44 +390,11 @@ export function SwapScreen({
 					</div>
 
 					{pairToken && (
-						<div className="mt-6 px-0 w-full max-w-full">
-							<div className="bg-card rounded-2xl border-2 border-border overflow-hidden">
-								<div className="px-4 pt-3 pb-1">
-									<p className="text-xs font-display font-bold tracking-wide uppercase text-muted-foreground">
-										USDC / {pairToken.symbol}
-									</p>
-								</div>
-								<div className="px-4 py-4">
-									<PairPriceChart
-										baseSymbol="USDC"
-										quoteToken={pairToken}
-										timeRange={chartRange}
-									/>
-								</div>
-								<p className="px-4 text-[10px] font-sans text-muted-foreground">
-									Y axis: price (USD). X axis: time.
-								</p>
-								<div className="flex gap-2 px-4 pb-4 pt-2">
-									{CHART_TIME_RANGES.map(({ value, label }) => (
-										<Button
-											key={value}
-											type="button"
-											variant="outline"
-											size="xs"
-											onClick={() => setChartRange(value)}
-											aria-pressed={chartRange === value}
-											aria-label={`Range ${label}`}
-											className={`chart-range-btn shrink-0 rounded-xl ${chartRange === value
-												? 'border-border bg-background font-bold text-foreground'
-												: 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-												}`}
-										>
-											{label}
-										</Button>
-									))}
-								</div>
+						<>
+							<div className="py-4 rounded-2xl overflow-hidden">
+								<DexScreenerEmbedChart token={pairToken} />
 							</div>
-						</div>
+						</>
 					)}
 				</div>
 			</div>

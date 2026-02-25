@@ -13,6 +13,7 @@ export type Token = {
 	address?: string
 	chainId?: string
 	dexId?: string
+	pairAddress?: string // Pool/pair contract address (for swapping and DexScreener embed)
 }
 
 export const USER_HOLDINGS: { token: Token; amount: number }[] = [

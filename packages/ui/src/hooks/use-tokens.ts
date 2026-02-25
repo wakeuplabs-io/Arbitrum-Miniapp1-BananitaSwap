@@ -16,7 +16,7 @@ export function getUsdcToken(): Token {
         price: 1.0,
         change24h: 0,
         marketCap: '$32B',
-        address: envParsed.USDC_TOKEN_ADDRESS,
+        address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
         chainId: 'arbitrum',
     }
 }
@@ -77,7 +77,8 @@ function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
         marketCap,
         address: token.address,
         chainId: pair.chainId,
-        dexId: pair.dexId,
+        // Don't include dexId - we don't want to show it in listings
+        pairAddress: pair.pairAddress,
     }
 }
 
@@ -91,22 +92,21 @@ export function useAllTokens() {
         queryKey: ['token-pairs'],
         queryFn: async () => {
             const pairs = await getTokenPairs()
-            // Convert pairs to tokens, keeping separate entries for same token on different DEXs
+            // Convert pairs to tokens, showing only one token per address (the one with highest price)
             // For token-pairs endpoint, baseToken is USDC, quoteToken is the token we want to display
-            // Use address + dexId as key to allow same token from different DEXs
+            // Use address as key (not address + dexId) to show only one token per address
             const uniquePairs = new Map<string, DexScreenerPair>()
             for (const pair of pairs) {
-
                 const address = pair.quoteToken.address
-
                 const addressLower = address.toLowerCase()
-                const dexId = pair.dexId || 'unknown'
-                const key = `${addressLower}-${dexId}`
+                const key = addressLower // Only use address, not dexId
 
                 if (!uniquePairs.has(key)) {
                     uniquePairs.set(key, pair)
                 } else {
-                    // Keep the pair with higher liquidity
+                    // Keep the pair with higher liquidity, but strongly prefer pairs with pairAddress
+                    // Note: We use liquidity here because token prices aren't available yet
+                    // (they're fetched later via getTokensInfo)
                     const existing = uniquePairs.get(key)!
                     const existingLiquidity = typeof existing.liquidity?.usd === 'string'
                         ? parseFloat(existing.liquidity.usd)
@@ -114,8 +114,27 @@ export function useAllTokens() {
                     const currentLiquidity = typeof pair.liquidity?.usd === 'string'
                         ? parseFloat(pair.liquidity.usd)
                         : pair.liquidity?.usd || 0
-                    if (currentLiquidity > existingLiquidity) {
+
+                    const hasExistingPairAddress = !!existing.pairAddress
+                    const hasCurrentPairAddress = !!pair.pairAddress
+
+                    // Strongly prefer pairs with pairAddress
+                    if (hasCurrentPairAddress && !hasExistingPairAddress) {
+                        // Current has pairAddress, existing doesn't - prefer current
                         uniquePairs.set(key, pair)
+                    } else if (!hasCurrentPairAddress && hasExistingPairAddress) {
+                        // Existing has pairAddress, current doesn't - keep existing
+                        // (do nothing)
+                    } else if (hasCurrentPairAddress && hasExistingPairAddress) {
+                        // Both have pairAddress - prefer higher liquidity
+                        if (currentLiquidity > existingLiquidity) {
+                            uniquePairs.set(key, pair)
+                        }
+                    } else {
+                        // Neither has pairAddress - prefer higher liquidity
+                        if (currentLiquidity > existingLiquidity) {
+                            uniquePairs.set(key, pair)
+                        }
                     }
                 }
             }
@@ -142,7 +161,9 @@ export function useAllTokens() {
             }
 
             // Convert pairs to tokens, using price info if available
-            const tokens = Array.from(uniquePairs.values()).map((pair) => {
+            // After fetching prices, re-select the token with highest price for each address
+            const tokensByAddress = new Map<string, Token>()
+            for (const pair of uniquePairs.values()) {
                 const token = pairToTokenFromTokenPairs(pair)
                 const address = pair.quoteToken.address.toLowerCase()
                 const tokenInfo = tokenInfosMap.get(address)
@@ -150,10 +171,43 @@ export function useAllTokens() {
                     token.price = tokenInfo.priceUsd
                     token.change24h = tokenInfo.priceChange24h
                 }
-                // Store dexId from the pair
-                token.dexId = pair.dexId
-                return token
-            })
+                // Store pairAddress from the pair (ensure it's preserved)
+                // Don't store dexId as we don't want to show it in listings
+                token.pairAddress = pair.pairAddress
+
+                // Select the token with highest price for each address
+                if (!tokensByAddress.has(address)) {
+                    tokensByAddress.set(address, token)
+                } else {
+                    const existing = tokensByAddress.get(address)!
+                    const existingPrice = existing.price || 0
+                    const currentPrice = token.price || 0
+
+                    // Prefer token with pairAddress, or higher price if both/neither have it
+                    const hasExistingPairAddress = !!existing.pairAddress
+                    const hasCurrentPairAddress = !!token.pairAddress
+
+                    if (hasCurrentPairAddress && !hasExistingPairAddress) {
+                        tokensByAddress.set(address, token)
+                    } else if (!hasCurrentPairAddress && hasExistingPairAddress) {
+                        // Keep existing
+                    } else if (currentPrice > existingPrice) {
+                        tokensByAddress.set(address, token)
+                    }
+                }
+
+                // Log if pairAddress is missing for debugging
+                if (!pair.pairAddress) {
+                    console.warn('[useAllTokens] Missing pairAddress for token:', {
+                        symbol: token.symbol,
+                        address: token.address,
+                        dexId: pair.dexId,
+                        chainId: pair.chainId,
+                    })
+                }
+            }
+
+            const tokens = Array.from(tokensByAddress.values())
 
             const usdc = getUsdcToken()
 
@@ -217,7 +271,8 @@ function pairToToken(pair: DexScreenerPair): Token {
         marketCap,
         address: baseToken.address,
         chainId: pair.chainId,
-        dexId: pair.dexId,
+        // Don't include dexId - we don't want to show it in listings
+        pairAddress: pair.pairAddress,
     }
 }
 
@@ -228,7 +283,7 @@ function pairToToken(pair: DexScreenerPair): Token {
  */
 export function useTokenSearch(query: string) {
     const trimmedQuery = query.trim()
-    const isValidQuery = trimmedQuery.length >= 3
+    const isValidQuery = trimmedQuery.length >= 0
 
     return useQuery({
         queryKey: ['token-search', trimmedQuery],
@@ -237,8 +292,8 @@ export function useTokenSearch(query: string) {
                 return []
             }
             const pairs = await searchTokenPairs(trimmedQuery)
-            // Keep separate entries for same token on different DEXs
-            // Use address + dexId as key to allow same token from different DEXs
+            // Show only one token per address (the one with highest price)
+            // Use address as key (not address + dexId) to show only one token per address
             // Note: After normalization in filterUsdcPairs, USDC is always baseToken,
             // so we extract quoteToken (the searched token) instead
             const uniqueTokens = new Map<string, DexScreenerPair>()
@@ -247,22 +302,36 @@ export function useTokenSearch(query: string) {
                 const address = pair.quoteToken.address
 
                 const addressLower = address.toLowerCase()
-                const dexId = pair.dexId || 'unknown'
-                const key = `${addressLower}-${dexId}`
+                const key = addressLower // Only use address, not dexId
 
                 if (!uniqueTokens.has(key)) {
                     uniqueTokens.set(key, pair)
                 } else {
-                    // Keep the pair with higher liquidity
+                    // Keep the pair with higher price, but strongly prefer pairs with pairAddress
                     const existing = uniqueTokens.get(key)!
-                    const existingLiquidity = typeof existing.liquidity?.usd === 'string'
-                        ? parseFloat(existing.liquidity.usd)
-                        : existing.liquidity?.usd || 0
-                    const currentLiquidity = typeof pair.liquidity?.usd === 'string'
-                        ? parseFloat(pair.liquidity.usd)
-                        : pair.liquidity?.usd || 0
-                    if (currentLiquidity > existingLiquidity) {
+                    const existingPrice = existing.priceUsd ? parseFloat(existing.priceUsd) : 0
+                    const currentPrice = pair.priceUsd ? parseFloat(pair.priceUsd) : 0
+
+                    const hasExistingPairAddress = !!existing.pairAddress
+                    const hasCurrentPairAddress = !!pair.pairAddress
+
+                    // Strongly prefer pairs with pairAddress
+                    if (hasCurrentPairAddress && !hasExistingPairAddress) {
+                        // Current has pairAddress, existing doesn't - prefer current
                         uniqueTokens.set(key, pair)
+                    } else if (!hasCurrentPairAddress && hasExistingPairAddress) {
+                        // Existing has pairAddress, current doesn't - keep existing
+                        // (do nothing)
+                    } else if (hasCurrentPairAddress && hasExistingPairAddress) {
+                        // Both have pairAddress - prefer higher price
+                        if (currentPrice > existingPrice) {
+                            uniqueTokens.set(key, pair)
+                        }
+                    } else {
+                        // Neither has pairAddress - prefer higher price
+                        if (currentPrice > existingPrice) {
+                            uniqueTokens.set(key, pair)
+                        }
                     }
                 }
             }

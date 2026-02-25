@@ -236,16 +236,17 @@ export function PortfolioScreen({
 				))}
 			</div>
 
-			<div className="h-0.5 bg-border mx-4" />
+			<div className="h-0.5 bg-border m-4" />
 
 			<div className="px-4 pt-0 flex-1">
+				<h2 className="text-center text-base sm:text-lg font-display font-bold uppercase tracking-wide text-foreground mb-8">
+					Your Tokens
+				</h2>
+
 				{nonUsdcHoldings.length === 0 ? (
 					<TokensEmptyState onBuyNow={onOpenSwap} />
 				) : (
 					<div>
-						<h3 className="text-lg font-display font-bold uppercase tracking-wide text-foreground mb-6">
-							Your tokens
-						</h3>
 						<div className="flex flex-col gap-4 stagger-slide-up">
 							{nonUsdcHoldings.map((holding) => {
 								const usdValue = holding.amount * holding.token.price
