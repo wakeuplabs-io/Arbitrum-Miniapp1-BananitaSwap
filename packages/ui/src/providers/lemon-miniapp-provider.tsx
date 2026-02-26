@@ -10,6 +10,7 @@ type LemonMiniappContextType = {
     handleDeposit: (amount: string, tokenName: TokenName) => Promise<void>
     handleWithdraw: (amount: string, tokenName: TokenName) => Promise<void>
     isAuthenticating: boolean
+    setWallet: (address: string | undefined) => void
 }
 
 const LemonMiniappContext = createContext<LemonMiniappContextType | undefined>(undefined)
@@ -100,6 +101,7 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
         handleDeposit,
         handleWithdraw,
         isAuthenticating,
+        setWallet,
     }
 
     return <LemonMiniappContext.Provider value={value}>{children}</LemonMiniappContext.Provider>

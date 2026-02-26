@@ -26,7 +26,7 @@ export function getUsdcToken(): Token {
  * For token-pairs, we extract the quoteToken (the token paired with USDC)
  * Note: priceUsd in pair is for baseToken (USDC), so we'll need to fetch quoteToken price separately
  */
-function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
+export function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
     // For token-pairs endpoint, baseToken is USDC, quoteToken is the token we want
     const token = pair.quoteToken
     // priceUsd in the pair is for baseToken (USDC), not quoteToken

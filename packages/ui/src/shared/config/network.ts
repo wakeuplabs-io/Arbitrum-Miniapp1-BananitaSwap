@@ -1,4 +1,4 @@
-import { arbitrum, arbitrumSepolia } from "viem/chains";
+import { arbitrum } from "viem/chains";
 
 import type { Chain } from "viem";
 import envParsed from "@/env-parsed";
@@ -17,10 +17,6 @@ export const getNetworkConfig = (): NetworkConfig => {
   return networkConfig;
 };
 
-const arbitrumSepoliaNetworkConfig: NetworkConfig = {
-  chain: arbitrumSepolia,
-  explorerUrl: "https://sepolia.arbiscan.io",
-};
 
 const arbitrumNetworkConfig: NetworkConfig = {
   chain: arbitrum,
@@ -28,9 +24,9 @@ const arbitrumNetworkConfig: NetworkConfig = {
 };
 
 const NETWORK_BY_ENV: Record<string, NetworkConfig> = {
-  development: arbitrumSepoliaNetworkConfig,
+  development: arbitrumNetworkConfig,
   production: arbitrumNetworkConfig,
-  staging: arbitrumSepoliaNetworkConfig,
+  staging: arbitrumNetworkConfig,
 };
 
 export const getShortAddress = (address: string) => {

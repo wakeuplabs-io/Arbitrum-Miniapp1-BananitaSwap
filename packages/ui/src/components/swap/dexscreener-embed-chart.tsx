@@ -42,8 +42,8 @@ export function DexScreenerEmbedChart({
         url.searchParams.set('info', '0')
         url.searchParams.set('chartLeftToolbar', '0')
         url.searchParams.set('chartDefaultOnMobile', '1')
-        url.searchParams.set('chartTheme', 'dark')
-        url.searchParams.set('theme', 'dark')
+        url.searchParams.set('chartTheme', 'light')
+        url.searchParams.set('theme', 'light')
         url.searchParams.set('chartStyle', '1')
         url.searchParams.set('chartType', 'price')
         url.searchParams.set('interval', timeRange)
@@ -53,7 +53,7 @@ export function DexScreenerEmbedChart({
 
     if (!embedUrl) {
         return (
-            <div className="w-full h-40 flex items-center justify-center">
+            <div className="w-full h-40 flex items-center justify-center bg-card rounded-2xl border-2 border-border">
                 <div className="text-sm text-muted-foreground">
                     {token ? 'Pair address not available for this token' : 'No token selected'}
                 </div>
@@ -62,13 +62,13 @@ export function DexScreenerEmbedChart({
     }
 
     return (
-        <div className="w-full rounded-2xl overflow-hidden">
+        <div className="w-full bg-card rounded-2xl border-2 border-border shadow-sm hover:border-primary hover:shadow-xl card-lift overflow-hidden">
             <style>{`
 				#dexscreener-embed {
 					position: relative;
 					width: 100%;
 					padding-bottom: 125%;
-                    height: 600px
+                    height: min(calc(100vh - 158px), 700px)
 				}
 				@media (min-width: 1400px) {
 					#dexscreener-embed {

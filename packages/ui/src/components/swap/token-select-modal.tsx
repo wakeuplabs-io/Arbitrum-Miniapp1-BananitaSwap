@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { TokenIcon } from './token-icon'
 import { useAllTokens, useTokenSearch } from '@/hooks/use-tokens'
 import { useDebounce } from '@/hooks/use-debounce'
+import { useUserHoldings } from '@/hooks/use-user-holdings'
 import type { Token } from '@/lib/tokens'
 
 type TokenSelectModalProps = {
@@ -18,6 +19,65 @@ type TokenSelectModalProps = {
 	onSelect?: (token: Token) => void
 	excludeSymbol?: string
 	navigateToDetailOnSelect?: boolean
+	mode?: 'buy' | 'sell'
+}
+
+/**
+ * Filter tokens by excludeSymbol (shared utility)
+ */
+function filterByExcludeSymbol(tokens: Token[], excludeSymbol?: string): Token[] {
+	if (!excludeSymbol) return tokens
+	return tokens.filter((t) => t.symbol !== excludeSymbol)
+}
+
+/**
+ * Filter tokens by search query (client-side filtering)
+ */
+function filterBySearchQuery(tokens: Token[], query: string): Token[] {
+	if (query.trim().length === 0) return tokens
+
+	const queryLower = query.trim().toLowerCase()
+	return tokens.filter((t) => {
+		const symbolMatch = t.symbol?.toLowerCase().includes(queryLower)
+		const nameMatch = t.name?.toLowerCase().includes(queryLower)
+		const addressMatch = t.address?.toLowerCase().includes(queryLower)
+		return symbolMatch || nameMatch || addressMatch
+	})
+}
+
+/**
+ * Hook for buy mode token selection
+ */
+function useBuyModeTokens(query: string, excludeSymbol?: string) {
+	const debouncedQuery = useDebounce(query, 300)
+	const { data: allTokens = [], isLoading: isLoadingAll } = useAllTokens()
+	const { data: searchResults = [], isLoading: isLoadingSearch } = useTokenSearch(debouncedQuery)
+
+	const shouldShowSearch = query.trim().length >= 3
+	const isLoading = shouldShowSearch ? isLoadingSearch : isLoadingAll
+
+	const tokens = useMemo(() => {
+		const tokenList = shouldShowSearch ? searchResults : allTokens
+		return filterByExcludeSymbol(tokenList, excludeSymbol)
+	}, [shouldShowSearch, searchResults, allTokens, excludeSymbol])
+
+	return { tokens, isLoading }
+}
+
+/**
+ * Hook for sell mode token selection
+ */
+function useSellModeTokens(query: string, excludeSymbol?: string) {
+	const { holdings, isLoading } = useUserHoldings()
+
+	// Extract tokens from holdings (which include mock tokens)
+	const tokens = useMemo(() => {
+		const tokenList = holdings.map((h) => h.token)
+		const filteredBySearch = filterBySearchQuery(tokenList, query)
+		return filterByExcludeSymbol(filteredBySearch, excludeSymbol)
+	}, [holdings, query, excludeSymbol])
+
+	return { tokens, isLoading }
 }
 
 export function TokenSelectModal({
@@ -25,28 +85,15 @@ export function TokenSelectModal({
 	onSelect,
 	excludeSymbol,
 	navigateToDetailOnSelect = false,
+	mode = 'buy',
 }: TokenSelectModalProps) {
 	const [query, setQuery] = useState('')
-	const debouncedQuery = useDebounce(query, 300)
 
-	// Use search API when query is provided, otherwise use all tokens
-	const { data: allTokens = [], isLoading: isLoadingAll } = useAllTokens()
-	const { data: searchResults = [], isLoading: isLoadingSearch } = useTokenSearch(debouncedQuery)
+	// Get tokens based on mode
+	const buyModeData = useBuyModeTokens(query, excludeSymbol)
+	const sellModeData = useSellModeTokens(query, excludeSymbol)
 
-	// Check if user has typed enough characters to search (use immediate query, not debounced)
-	const shouldShowSearch = query.trim().length >= 3
-	const isLoading = shouldShowSearch ? isLoadingSearch : isLoadingAll
-
-	// Use search results when query exists and is at least 3 characters, otherwise use all tokens
-	const tokens = useMemo(() => {
-		const tokenList = shouldShowSearch ? searchResults : allTokens
-
-		// Filter by excludeSymbol
-		return tokenList.filter((t) => {
-			if (excludeSymbol && t.symbol === excludeSymbol) return false
-			return true
-		})
-	}, [query, shouldShowSearch, searchResults, allTokens, excludeSymbol])
+	const { tokens, isLoading } = mode === 'buy' ? buyModeData : sellModeData
 
 	function handleSelectToken(token: Token) {
 		console.log('[TokenSelectModal] Selected token data:', {
@@ -117,7 +164,13 @@ export function TokenSelectModal({
 
 					<div className="px-4 pb-3">
 						<h3 className="text-base font-display font-bold uppercase tracking-wide text-foreground">
-							{query.trim().length >= 3 ? 'Search Results' : 'Popular Tokens'}
+							{mode === 'sell'
+								? query.trim().length > 0
+									? 'Search Results'
+									: 'Your Tokens'
+								: query.trim().length >= 3
+									? 'Search Results'
+									: 'Popular Tokens'}
 						</h3>
 					</div>
 
@@ -129,11 +182,15 @@ export function TokenSelectModal({
 						) : tokens.length === 0 ? (
 							<div className="flex flex-col items-center justify-center py-12 text-center">
 								<p className="text-sm text-muted-foreground">
-									{query.trim().length >= 3
-										? 'No tokens found. Try a different search.'
-										: query.trim().length > 0
-											? 'Type at least 3 characters to search'
-											: 'No tokens available.'}
+									{mode === 'sell'
+										? query.trim().length > 0
+											? 'No tokens found. Try a different search.'
+											: 'No tokens available.'
+										: query.trim().length >= 3
+											? 'No tokens found. Try a different search.'
+											: query.trim().length > 0
+												? 'Type at least 3 characters to search'
+												: 'No tokens available.'}
 								</p>
 							</div>
 						) : (

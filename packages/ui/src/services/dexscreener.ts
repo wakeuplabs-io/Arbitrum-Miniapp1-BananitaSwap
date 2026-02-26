@@ -293,3 +293,52 @@ export async function getTokenPairs(): Promise<DexScreenerPair[]> {
         throw error
     }
 }
+
+/**
+ * Get token pairs for multiple token addresses
+ * Fetches pairs in batches to avoid API rate limits
+ * @param tokenAddresses - Array of token addresses to fetch pairs for
+ * @returns Array of pairs for the tokens (filtered to USDC pairs from allowed DEXs)
+ */
+export async function getTokenPairsForAddresses(
+    tokenAddresses: string[]
+): Promise<DexScreenerPair[]> {
+    if (tokenAddresses.length === 0) {
+        return []
+    }
+
+    const allPairs: DexScreenerPair[] = []
+    const BATCH_SIZE = 10 // Fetch in smaller batches to avoid rate limits
+
+    for (let i = 0; i < tokenAddresses.length; i += BATCH_SIZE) {
+        const batch = tokenAddresses.slice(i, i + BATCH_SIZE)
+
+        const batchPromises = batch.map(async (address) => {
+            try {
+                const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${CHAIN_ID}/${address}`
+                const response = await fetch(url)
+
+                if (!response.ok) {
+                    // Silently skip addresses that don't have pairs on DexScreener
+                    return []
+                }
+
+                const data = await response.json()
+                const validated = TokenPairsResponseSchema.parse(data)
+                const arbitrumPairs = filterArbitrumPairs(validated)
+                const usdcPairs = filterUsdcPairs(arbitrumPairs)
+                const allowedDexPairs = filterAllowedDexs(usdcPairs)
+
+                return allowedDexPairs
+            } catch (error) {
+                // Silently skip addresses that fail (might not be on DexScreener)
+                return []
+            }
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        allPairs.push(...batchResults.flat())
+    }
+
+    return allPairs
+}

@@ -1,6 +1,9 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react'
 import type { Token } from '@/lib/tokens'
 import { useUserHoldings, type TokenHolding } from '@/hooks/use-user-holdings'
+import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
+import { useOwnedTokens } from '@/hooks/use-owned-tokens'
+import { getUsdcToken } from '@/hooks/use-tokens'
 
 type MockTokenStateContextType = {
     mockHoldings: TokenHolding[] | null
@@ -20,6 +23,63 @@ const MockTokenStateContext = createContext<MockTokenStateContextType | undefine
 export function MockTokenStateProvider({ children }: { children: ReactNode }) {
     const [mockHoldings, setMockHoldings] = useState<TokenHolding[] | null>(null)
     const { holdings: userHoldings } = useUserHoldings()
+    const { wallet } = useLemonMiniapp()
+    const { data: ownedTokensData, isLoading: isLoadingOwnedTokens } = useOwnedTokens()
+    const lastWalletRef = useRef<string | undefined>(undefined)
+
+    // When wallet address is set and holdings are loaded, copy them to mock holdings
+    useEffect(() => {
+        const hasValidWallet = wallet && wallet !== 'undefined' && wallet.trim() !== ''
+        const walletChanged = wallet !== lastWalletRef.current
+
+        if (hasValidWallet && !isLoadingOwnedTokens && ownedTokensData) {
+            // Only sync if wallet changed (to avoid overwriting user edits)
+            if (walletChanged) {
+                const holdings: TokenHolding[] = []
+                const usdc = getUsdcToken()
+
+                // Add all owned tokens (including USDC)
+                if (ownedTokensData.tokens && ownedTokensData.balances) {
+                    for (const token of ownedTokensData.tokens) {
+                        const balance = ownedTokensData.balances.get(token.address?.toLowerCase() || '')
+                        if (balance && balance > 0) {
+                            holdings.push({
+                                token,
+                                amount: balance,
+                            })
+                        }
+                    }
+
+                    // Also add USDC if it's in balances but not in tokens (edge case)
+                    const usdcBalance = ownedTokensData.balances.get(usdc.address?.toLowerCase() || '')
+                    if (usdcBalance && usdcBalance > 0) {
+                        const hasUsdcInTokens = holdings.some(
+                            (h) => h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdc.address?.toLowerCase()
+                        )
+                        if (!hasUsdcInTokens) {
+                            holdings.push({
+                                token: usdc,
+                                amount: usdcBalance,
+                            })
+                        }
+                    }
+
+                    // Copy holdings to mock state so they can be edited
+                    if (holdings.length > 0) {
+                        setMockHoldings(holdings.filter((h) => h.amount > 0))
+                    } else {
+                        // If no holdings found, clear mock holdings
+                        setMockHoldings(null)
+                    }
+                }
+            }
+        } else if (!hasValidWallet && walletChanged) {
+            // Wallet was cleared, reset mock holdings
+            setMockHoldings(null)
+        }
+
+        lastWalletRef.current = wallet
+    }, [wallet, ownedTokensData, isLoadingOwnedTokens])
 
     const updateTokenAmount = useCallback((symbol: string, amount: number) => {
         setMockHoldings((prev) => {
@@ -51,8 +111,16 @@ export function MockTokenStateProvider({ children }: { children: ReactNode }) {
             // Initialize with current holdings if not already mocking
             const holdings = prev || [...userHoldings]
             const filtered = holdings.filter((h) => h.token.symbol !== symbol)
-            // Don't allow removing all tokens - keep at least one
-            return filtered.length === 0 ? holdings : filtered
+            // When mocking (prev !== null), allow removing all tokens including the last one
+            // When not mocking (prev === null), keep at least one token
+            // Note: The button is already disabled when !isMocking && holdings.length === 1,
+            // so this check is a safety measure
+            if (prev === null && filtered.length === 0) {
+                // Not mocking and trying to remove last token - prevent it
+                return holdings
+            }
+            // Mocking mode (prev !== null) - allow removing all tokens, or has remaining tokens
+            return filtered
         })
     }, [userHoldings])
 

@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Settings2, X, Plus, Trash2, RotateCcw } from 'lucide-react'
+import { Settings2, X, Plus, Trash2, RotateCcw, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useMockTokenState } from '@/contexts/mock-token-state'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useAllTokens } from '@/hooks/use-tokens'
 import { TokenIcon } from '@/components/swap/token-icon'
+import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 
 export function TokenControlPanel() {
     const [isOpen, setIsOpen] = useState(false)
@@ -24,8 +25,10 @@ export function TokenControlPanel() {
 
     const { holdings, getAvailableTokens } = useUserHoldings()
     const { data: allTokens } = useAllTokens()
+    const { wallet, setWallet } = useLemonMiniapp()
     const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>('')
     const [newTokenAmount, setNewTokenAmount] = useState<string>('')
+    const [walletAddressInput, setWalletAddressInput] = useState<string>(wallet || '')
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (!panelRef.current) return
@@ -76,6 +79,26 @@ export function TokenControlPanel() {
         setSelectedTokenSymbol('')
         setNewTokenAmount('')
     }, [selectedTokenSymbol, newTokenAmount, allTokens, addToken])
+
+    const handleSetWallet = useCallback(() => {
+        const address = walletAddressInput.trim()
+        setWallet(address || undefined)
+    }, [walletAddressInput, setWallet])
+
+    const handleClearWallet = useCallback(() => {
+        setWallet(undefined)
+        setWalletAddressInput('')
+    }, [setWallet])
+
+    const handleResetToDefault = useCallback(() => {
+        resetToDefault()
+        setWallet(undefined)
+        setWalletAddressInput('')
+    }, [resetToDefault, setWallet])
+
+    useEffect(() => {
+        setWalletAddressInput(wallet || '')
+    }, [wallet])
 
     const availableTokens = allTokens ? getAvailableTokens(allTokens) : []
 
@@ -132,14 +155,57 @@ export function TokenControlPanel() {
 
             {/* Content - scrollable */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Wallet Address Control */}
+                <div>
+                    <h4 className="text-xs font-display font-semibold uppercase tracking-wide text-foreground mb-2 flex items-center gap-2">
+                        <Wallet className="h-3 w-3" />
+                        Wallet Address
+                    </h4>
+                    <div className="space-y-2">
+                        <div className="flex gap-2">
+                            <Input
+                                type="text"
+                                value={walletAddressInput}
+                                onChange={(e) => setWalletAddressInput(e.target.value)}
+                                placeholder="0x..."
+                                className="flex-1 h-8 text-xs font-mono"
+                            />
+                            <Button
+                                type="button"
+                                variant="default"
+                                size="xs"
+                                onClick={handleSetWallet}
+                                className="rounded-full"
+                            >
+                                Set
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="xs"
+                                onClick={handleClearWallet}
+                                disabled={!wallet}
+                                className="rounded-full"
+                            >
+                                Clear
+                            </Button>
+                        </div>
+                        {wallet && (
+                            <p className="text-[10px] text-muted-foreground font-mono truncate">
+                                Current: {wallet}
+                            </p>
+                        )}
+                    </div>
+                </div>
+
                 {/* Reset button */}
                 <div className="flex justify-end">
                     <Button
                         type="button"
                         variant="outline"
                         size="xs"
-                        onClick={resetToDefault}
-                        disabled={!isMocking}
+                        onClick={handleResetToDefault}
+                        disabled={!isMocking && !wallet}
                         className="rounded-full"
                     >
                         <RotateCcw className="h-3 w-3 mr-1" />
@@ -198,6 +264,7 @@ export function TokenControlPanel() {
                                         disabled={!isMocking && holdings.length === 1}
                                         className="rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
                                         aria-label={`Remove ${holding.token.symbol}`}
+                                        title={!isMocking && holdings.length === 1 ? 'Cannot remove the last token when not mocking' : `Remove ${holding.token.symbol}`}
                                     >
                                         <Trash2 className="h-3 w-3" />
                                     </Button>

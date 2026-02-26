@@ -198,6 +198,7 @@ function SwapPage() {
 					onClose={() => setModal('none')}
 					onSelect={handleSelectTokenFromSwap}
 					excludeSymbol="USDC"
+					mode={tokenSelectSide}
 				/>
 			)}
 		</main>
