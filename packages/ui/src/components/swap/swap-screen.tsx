@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ArrowUpDown, ChevronDown } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { TokenIcon } from './token-icon'
 import { SwipeButton } from './swipe-button'
@@ -27,6 +28,7 @@ export function SwapScreen({
 	onToggleDirection,
 	onSwapComplete,
 }: SwapScreenProps) {
+	const navigate = useNavigate()
 	const usdc = getUsdcToken()
 	const { getUsdcBalance, getTokenBalance } = useUserHoldings()
 	const { isMocking, swap: mockSwap } = useMockTokenState()
@@ -153,15 +155,26 @@ export function SwapScreen({
 			<div className="flex-1 overflow-y-auto overflow-x-hidden pb-20 w-full min-w-0">
 				<div className="flex flex-col items-center w-full min-w-0 pt-6 pb-8 animate-fade-in-up">
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
-						Total balance in USDC
+						Available USDC
 					</p>
 					<p className="text-5xl text-foreground mt-1 tracking-tight numeric-balance">
 						${usdcBalance.toFixed(2)}
 					</p>
 					{usdcBalance === 0 && (
-						<p className="text-sm text-muted-foreground mt-1">
+						<Button
+							type="button"
+							variant="default"
+							size="xs"
+							onClick={() => {
+								navigate({
+									to: '/portfolio',
+									search: { action: 'deposit' },
+								})
+							}}
+							className="mt-1 rounded-full !bg-gradient-to-r !from-[#FFC700] !to-[#FFA500] hover:!from-[#FFD000] hover:!to-[#FFB020] !text-[#0A0A0A] !border-0 !shadow-[0_4px_14px_rgba(255,199,0,0.4)] hover:!shadow-[0_6px_20px_rgba(255,199,0,0.5)] focus-visible:!ring-2 focus-visible:!ring-[#FFC700] focus-visible:!ring-offset-2"
+						>
 							Deposit to get started
-						</p>
+						</Button>
 					)}
 				</div>
 
@@ -221,7 +234,7 @@ export function SwapScreen({
 								onBlur={() => setIsFocused(false)}
 								placeholder="0"
 								aria-label={topLabel === 'Sell' ? 'Amount to sell' : 'Amount to sell'}
-								className={`bg-transparent numeric font-bold text-foreground outline-none w-full min-w-0 placeholder:text-muted-foreground/50 rounded-xl focus:ring-2 focus:ring-primary focus:ring-offset-2 text-[clamp(1.25rem,5vw,1.875rem)] ${isFocused ? 'caret-primary' : ''
+								className={`bg-transparent numeric font-bold text-foreground outline-none w-full min-w-0 placeholder:text-muted-foreground/50 rounded-xl focus:ring-0 focus:ring-offset-0 text-[clamp(1.25rem,5vw,1.875rem)] ${isFocused ? 'caret-primary' : ''
 									}`}
 							/>
 

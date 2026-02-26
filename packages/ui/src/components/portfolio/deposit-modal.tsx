@@ -90,7 +90,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                         message="Your funds have been added to your account."
                         onDismiss={onClose}
                         buttonLabel="Done"
-                        imageSrc="/success-monkey.webp"
+                        imageSrc="/success-deposit-monkey.png"
                         imageAlt="Monkey depositing coin into pouch"
                     />
                 </DialogContent>

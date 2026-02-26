@@ -180,15 +180,21 @@ export function PortfolioScreen({
 				)}
 				<div className="flex flex-col items-center gap-0.5 mt-2">
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
-						Total balance in USDC
+						Total value in USDC
 					</p>
 					<p className="text-5xl text-foreground tracking-tight numeric-balance">
 						${balanceUsd.toFixed(2)}
 					</p>
 					{balanceUsd === 0 ? (
-						<p className="text-sm text-muted-foreground">
+						<Button
+							type="button"
+							variant="default"
+							size="xs"
+							onClick={onOpenDeposit}
+							className="mt-1 rounded-full !bg-gradient-to-r !from-[#FFC700] !to-[#FFA500] hover:!from-[#FFD000] hover:!to-[#FFB020] !text-[#0A0A0A] !border-0 !shadow-[0_4px_14px_rgba(255,199,0,0.4)] hover:!shadow-[0_6px_20px_rgba(255,199,0,0.5)] focus-visible:!ring-2 focus-visible:!ring-[#FFC700] focus-visible:!ring-offset-2"
+						>
 							Deposit to get started
-						</p>
+						</Button>
 					) : (
 						<p className="flex items-center gap-1 text-sm text-muted-foreground">
 							<span
@@ -227,7 +233,7 @@ export function PortfolioScreen({
 			<div className="h-0.5 bg-border m-4" />
 
 			<div className="px-4 pt-0 flex-1">
-				<h2 className="text-center text-base sm:text-lg font-display font-bold uppercase tracking-wide text-foreground mb-8">
+				<h2 className="text-base sm:text-lg font-display font-bold uppercase tracking-wide text-foreground mb-8">
 					Your Tokens
 				</h2>
 
