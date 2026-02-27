@@ -1,10 +1,12 @@
-import { DollarSign, ArrowLeftRight, ArrowDownToLine } from 'lucide-react'
+import { DollarSign, ArrowLeftRight, ArrowDownToLine, Copy, Check } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenIcon } from '@/components/swap/token-icon'
 import { TokensEmptyState } from './tokens-empty-state'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useAvatar } from '@/hooks/use-avatar'
+import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import type { Token } from '@/lib/tokens'
 
 type PortfolioScreenProps = {
@@ -25,8 +27,27 @@ export function PortfolioScreen({
 	const navigate = useNavigate()
 	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, isLoading } = useUserHoldings()
 	const avatarUrl = useAvatar()
+	const { wallet } = useLemonMiniapp()
+	const [copied, setCopied] = useState(false)
 
 	const changePercent = 0 // TODO: Calculate from historical data if needed
+
+	const handleCopyAddress = async () => {
+		if (!wallet) return
+		
+		try {
+			await navigator.clipboard.writeText(wallet)
+			setCopied(true)
+			setTimeout(() => setCopied(false), 2000)
+		} catch (error) {
+			console.error('Failed to copy address:', error)
+		}
+	}
+
+	const formatAddress = (address: string) => {
+		if (address.length <= 10) return address
+		return `${address.slice(0, 6)}...${address.slice(-4)}`
+	}
 
 	const actions = [
 		{ icon: DollarSign, label: 'Deposit', onClick: onOpenDeposit },
@@ -45,6 +66,27 @@ export function PortfolioScreen({
 							alt=""
 							className="h-full w-full rounded-full object-cover"
 						/>
+					</div>
+				)}
+				{wallet && (
+					<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border">
+						<span className="text-xs font-mono text-muted-foreground">
+							{formatAddress(wallet)}
+						</span>
+						<Button
+							type="button"
+							variant="ghost"
+							size="xs"
+							onClick={handleCopyAddress}
+							className="h-6 w-6 p-0 rounded-full hover:bg-muted"
+							aria-label="Copy wallet address"
+						>
+							{copied ? (
+								<Check className="w-3 h-3 text-success" />
+							) : (
+								<Copy className="w-3 h-3 text-muted-foreground" />
+							)}
+						</Button>
 					</div>
 				)}
 				<div className="flex flex-col items-center gap-0.5">
