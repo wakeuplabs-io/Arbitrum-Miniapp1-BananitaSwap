@@ -46,13 +46,6 @@ jobs:
             "cd packages/api && npm ci --prefer-offline --no-audit" \
             "cd packages/ui && npm ci --prefer-offline --no-audit"
 
-      # - name: Migrate database
-      #   working-directory: ./packages/api
-      #   run: npm run db:generate && npm run db:migrate
-      #   env:
-      #     GITHUB_VARS_JSON: ${{ toJSON(vars) }}
-      #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
       - name: Remove system Pulumi (avoid version conflicts)
         run: |
           sudo rm -f /usr/local/bin/pulumi*
@@ -61,8 +54,9 @@ jobs:
       - name: Deploy
         run: npm run deploy:app:staging
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DOMAIN_URL: ${{ vars.DOMAIN_URL }}
+          USDC_TOKEN_ADDRESS: ${{ vars.USDC_TOKEN_ADDRESS }}
+          RPC_URL: ${{ secrets.RPC_URL }}
 
       - name: Save Outputs
         id: save-outputs

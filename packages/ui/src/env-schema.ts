@@ -1,15 +1,8 @@
 import { z } from "zod";
 
 // Environment schema - pure validation rules without side effects
-// When MOCK_API is true, API_URL is not required (UI works standalone for flow validation)
 export const EnvSchema = z
   .object({
-    API_URL: z.string().url().optional().default("http://localhost:9999/api"),
-    MOCK_API: z
-      .string()
-      .optional()
-      .default("true")
-      .transform((v) => v === "true" || v === "1"),
     NODE_ENV: z
       .enum(["development", "staging", "production"], {
         errorMap: () => ({
@@ -17,8 +10,9 @@ export const EnvSchema = z
         }),
       })
       .default("development"),
+    API_URL: z.string().url().optional().default("http://localhost:9999/api"),
     RPC_URL: z.string().url().optional(),
-    USDC_TOKEN_ADDRESS: z.string().optional().default("0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"),
+    USDC_TOKEN_ADDRESS: z.string(),
   })
   ;
 
