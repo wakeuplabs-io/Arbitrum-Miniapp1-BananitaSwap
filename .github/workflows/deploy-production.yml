@@ -55,8 +55,8 @@ jobs:
         run: npm run deploy:app:production
         env:
           DOMAIN_URL: ${{ vars.DOMAIN_URL }}
-          USDC_TOKEN_ADDRESS: ${{ vars.USDC_TOKEN_ADDRESS }}
-          RPC_URL: ${{ secrets.RPC_URL }}
+          VITE_USDC_TOKEN_ADDRESS: ${{ vars.USDC_TOKEN_ADDRESS }}
+          VITE_RPC_URL: ${{ secrets.RPC_URL }}
 
       - name: Save Outputs
         id: save-outputs
