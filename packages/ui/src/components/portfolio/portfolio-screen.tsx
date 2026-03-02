@@ -25,12 +25,10 @@ export function PortfolioScreen({
 	onBuyToken,
 }: PortfolioScreenProps) {
 	const navigate = useNavigate()
-	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, isLoading } = useUserHoldings()
+	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } = useUserHoldings()
 	const avatarUrl = useAvatar()
-	const { wallet } = useLemonMiniapp()
+	const { wallet, isAuthenticated, isInLemonWebView, isAuthenticating, authLogs, clearAuthLogs } = useLemonMiniapp()
 	const [copied, setCopied] = useState(false)
-
-	const changePercent = 0 // TODO: Calculate from historical data if needed
 
 	const handleCopyAddress = async () => {
 		if (!wallet) return
@@ -110,12 +108,12 @@ export function PortfolioScreen({
 						<p className="flex items-center gap-1 text-sm text-muted-foreground">
 							<span
 								className={
-									changePercent >= 0 ? 'text-success' : 'text-destructive'
+									dailyChangePercent >= 0 ? 'text-success' : 'text-destructive'
 								}
 							>
-								{changePercent >= 0 ? '▲' : '▼'}
+								{dailyChangePercent >= 0 ? '▲' : '▼'}
 							</span>
-							{`${Math.abs(changePercent).toFixed(1)}% All time`}
+							{`${Math.abs(dailyChangePercent).toFixed(1)}% 24h`}
 						</p>
 					)}
 				</div>
@@ -143,7 +141,75 @@ export function PortfolioScreen({
 
 			<div className="h-0.5 bg-border m-4" />
 
-			<div className="px-4 pt-0 flex-1">
+			<div className="px-4 space-y-3">
+				<h3 className="text-xs font-display font-semibold uppercase tracking-wide text-muted-foreground">
+					LemonMiniapp context
+				</h3>
+				<div className="grid gap-2">
+					<div className="flex flex-col gap-1">
+						<label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">wallet</label>
+						<input
+							readOnly
+							value={wallet ?? '—'}
+							className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs font-mono text-foreground"
+						/>
+					</div>
+					<div className="flex flex-col gap-1">
+						<label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">isAuthenticated</label>
+						<input
+							readOnly
+							value={String(isAuthenticated)}
+							className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs font-mono text-foreground"
+						/>
+					</div>
+					<div className="flex flex-col gap-1">
+						<label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">isInLemonWebView</label>
+						<input
+							readOnly
+							value={String(isInLemonWebView)}
+							className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs font-mono text-foreground"
+						/>
+					</div>
+					<div className="flex flex-col gap-1">
+						<label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">isAuthenticating</label>
+						<input
+							readOnly
+							value={String(isAuthenticating)}
+							className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs font-mono text-foreground"
+						/>
+					</div>
+				</div>
+				<div className="flex flex-col gap-1">
+					<div className="flex items-center justify-between">
+						<label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Auth flow logs</label>
+						{authLogs.length > 0 && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="xs"
+								onClick={clearAuthLogs}
+								className="h-6 text-[10px]"
+							>
+								Clear
+							</Button>
+						)}
+					</div>
+					<div className="rounded-lg border border-border bg-muted/50 px-3 py-2 max-h-40 overflow-y-auto font-mono text-[10px] text-foreground space-y-1">
+						{authLogs.length === 0 ? (
+							<span className="text-muted-foreground">No logs yet.</span>
+						) : (
+							authLogs.map((entry) => (
+								<div key={entry.id} className="flex gap-2 flex-wrap">
+									<span className="text-muted-foreground shrink-0">{entry.time}</span>
+									<span>{entry.message}</span>
+								</div>
+							))
+						)}
+					</div>
+				</div>
+			</div>
+
+			<div className="px-4 pt-4 flex-1">
 				<h2 className="text-base sm:text-lg font-display font-bold uppercase tracking-wide text-foreground mb-8">
 					Your Tokens
 				</h2>

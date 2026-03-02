@@ -100,6 +100,28 @@ export function useUserHoldings() {
         return total + usdcBalance
     }, [holdings])
 
+    /**
+     * Daily (24h) portfolio variance: price-only change of current basket.
+     * Derived from token-level priceChange24h (DexScreener). Does not account for
+     * deposits/withdrawals/swaps in the last 24h.
+     */
+    const dailyChangePercent = useMemo(() => {
+        let total24hAgo = 0
+
+        for (const holding of holdings) {
+            if (holding.token.symbol === 'USDC') {
+                total24hAgo += holding.amount
+            } else if (holding.token.price != null && holding.token.price > 0) {
+                const change24h = holding.token.change24h ?? 0
+                const price24hAgo = change24h === -100 ? 0 : holding.token.price / (1 + change24h / 100)
+                total24hAgo += holding.amount * price24hAgo
+            }
+        }
+
+        if (total24hAgo === 0) return 0
+        return ((totalBalanceUsd - total24hAgo) / total24hAgo) * 100
+    }, [holdings, totalBalanceUsd])
+
     const getTokenBalance = useCallback((symbol: string, fallback?: number): number => {
         return holdings.find((h) => h.token.symbol === symbol)?.amount ?? fallback ?? 0
     }, [holdings])
@@ -124,6 +146,7 @@ export function useUserHoldings() {
         holdings,
         nonUsdcHoldings,
         totalBalanceUsd,
+        dailyChangePercent,
         isLoading,
         getTokenBalance,
         getUsdcBalance,

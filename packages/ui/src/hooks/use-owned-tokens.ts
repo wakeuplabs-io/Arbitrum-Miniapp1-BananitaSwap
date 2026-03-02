@@ -28,7 +28,7 @@ type OwnedTokensResult = {
  * - Indexed event parameters for RPC-level filtering
  * - Single RPC call to fetch all transfers
  * - In-memory deduplication to track latest transfer per token
- * - Batch processing for balance checks
+ * - Multicall for balance + decimals (2 RPC calls per batch instead of 1–2 per token)
  * - Fetches token metadata from DexScreener API
  */
 export function useOwnedTokens() {
@@ -73,55 +73,55 @@ export function useOwnedTokens() {
                 }
 
                 const tokenAddresses = Array.from(latestByToken.keys())
-                const batchSize = 20
+                const batchSize = 50
                 const balanceMapTemp = new Map<string, number>()
 
-                // Check balances for all tokens
+                // Batch balance + decimals via multicall (2 RPC calls per batch instead of 1–2 per token)
                 for (let i = 0; i < tokenAddresses.length; i += batchSize) {
                     const batch = tokenAddresses.slice(i, i + batchSize)
 
-                    const balancePromises = batch.map(async (tokenAddress) => {
-                        try {
-                            // First, check balance - if it's 0, skip fetching decimals
-                            const balance = await publicClient.readContract({
-                                address: tokenAddress as Address,
-                                abi: ERC20_ABI,
-                                functionName: 'balanceOf',
-                                args: [walletAddress],
-                            })
+                    const balanceContracts = batch.map((tokenAddress) => ({
+                        address: tokenAddress as Address,
+                        abi: ERC20_ABI,
+                        functionName: 'balanceOf' as const,
+                        args: [walletAddress],
+                    }))
 
-                            // If balance is 0, skip this token (no need to fetch decimals)
-                            if (balance === 0n) {
-                                return
-                            }
+                    const balanceResults = await publicClient.multicall({
+                        contracts: balanceContracts,
+                        allowFailure: true,
+                    })
 
-                            // Only fetch decimals if balance > 0
-                            let decimals: number = 18 // Default fallback
-                            try {
-                                decimals = await publicClient.readContract({
-                                    address: tokenAddress as Address,
-                                    abi: ERC20_ABI,
-                                    functionName: 'decimals',
-                                })
-                            } catch (error) {
-                                // decimals() not available, use default of 18
-                                // This handles non-standard ERC20 tokens or older tokens
-                            }
-
-                            const formattedBalance = parseFloat(formatUnits(balance, decimals))
-                            if (formattedBalance > 0) {
-                                balanceMapTemp.set(tokenAddress, formattedBalance)
-                            }
-                        } catch (error) {
-                            // Silently skip tokens that fail (might be ERC721, ERC1155, or invalid contracts)
-                            // Only log if it's an unexpected error
-                            if (error instanceof Error && !error.message.includes('reverted')) {
-                                console.error(`Unexpected error for ${tokenAddress}:`, error)
-                            }
+                    const tokensWithBalance: { address: string; balance: bigint }[] = []
+                    balanceResults.forEach((res, idx) => {
+                        if (res.status !== 'success' || res.result === 0n) return
+                        const tokenAddress = batch[idx]
+                        if (res.result! > 0n) {
+                            tokensWithBalance.push({ address: tokenAddress, balance: res.result! })
                         }
                     })
 
-                    await Promise.all(balancePromises)
+                    if (tokensWithBalance.length === 0) continue
+
+                    const decimalsContracts = tokensWithBalance.map(({ address }) => ({
+                        address: address as Address,
+                        abi: ERC20_ABI,
+                        functionName: 'decimals' as const,
+                    }))
+
+                    const decimalsResults = await publicClient.multicall({
+                        contracts: decimalsContracts,
+                        allowFailure: true,
+                    })
+
+                    decimalsResults.forEach((res, idx) => {
+                        const { address, balance } = tokensWithBalance[idx]
+                        const decimals = res.status === 'success' ? Number(res.result) : 18
+                        const formattedBalance = parseFloat(formatUnits(balance, decimals))
+                        if (formattedBalance > 0) {
+                            balanceMapTemp.set(address, formattedBalance)
+                        }
+                    })
                 }
 
                 // Copy results to final map
