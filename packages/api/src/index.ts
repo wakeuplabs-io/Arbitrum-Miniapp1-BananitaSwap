@@ -14,6 +14,7 @@ app.use("*", logger());
 app.use("*", cors());
 
 const api = new Hono();
+app.route("/", api);
 api.route("/placeholders", placeholderRouter);
 api.route("/auth", authRouter);
 

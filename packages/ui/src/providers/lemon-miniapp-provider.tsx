@@ -120,7 +120,6 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (isInLemonWebView) {
-            addAuthLog('useEffect: isInLemonWebView true, calling handleAuthentication()')
             handleAuthentication()
         }
     }, [isInLemonWebView, handleAuthentication, addAuthLog])

@@ -17,6 +17,7 @@ type DepositModalProps = {
 export function DepositModal({ onClose }: DepositModalProps) {
     const [amount, setAmount] = useState('')
     const [showSuccess, setShowSuccess] = useState(false)
+    const [showLemonRequested, setShowLemonRequested] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const { getTotalBalanceUsd } = useUserHoldings()
@@ -63,7 +64,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                 }
 
                 await handleDeposit(amount, TokenName.USDC)
-                setShowSuccess(true)
+                setShowLemonRequested(true)
             }
         } catch (err) {
             const errorMessage =
@@ -88,6 +89,27 @@ export function DepositModal({ onClose }: DepositModalProps) {
                     <SuccessScreen
                         title="Deposit successful!"
                         message="Your funds have been added to your account."
+                        onDismiss={onClose}
+                        buttonLabel="Done"
+                        imageSrc="/success-deposit-monkey.png"
+                        imageAlt="Monkey depositing coin into pouch"
+                    />
+                </DialogContent>
+            </Dialog>
+        )
+    }
+
+    if (showLemonRequested) {
+        return (
+            <Dialog open onOpenChange={(open) => !open && onClose()}>
+                <DialogContent fullScreen showCloseButton={false} className="flex flex-col overflow-hidden p-0">
+                    <DialogTitle className="sr-only">Deposit requested</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Check the Lemon Cash app for confirmation.
+                    </DialogDescription>
+                    <SuccessScreen
+                        title="Deposit requested"
+                        message="Check the Lemon Cash app for confirmation. If you saw an error there, the deposit did not complete."
                         onDismiss={onClose}
                         buttonLabel="Done"
                         imageSrc="/success-deposit-monkey.png"
