@@ -60,6 +60,7 @@ export default $config({
       environment: {
         NODE_ENV: $app.stage,
         DATABASE_URL: process.env.DATABASE_URL!,
+        RPC_URL: process.env.RPC_URL!,
       },
     });
 
@@ -84,6 +85,53 @@ export default $config({
     // Add routes to connect API Gateway to the function
     api.route("ANY /{proxy+}", apiFunction.arn);
     api.route("ANY /", apiFunction.arn);
+
+    // deploy ui
+    const ui = new sst.aws.StaticSite(`${PROJECT_NAME}-ui`, {
+      build: {
+        command: "npm run build:ui",
+        output: "packages/ui/dist",
+      },
+      domain: DOMAIN_URL,
+      environment: {
+        NODE_ENV: $app.stage,
+        VITE_API_URL: $interpolate`${api.url}`,
+        VITE_RPC_URL: process.env.RPC_URL!,
+        VITE_USDC_TOKEN_ADDRESS: process.env.USDC_TOKEN_ADDRESS!,
+      },
+      assets: {
+        textEncoding: "utf-8",
+        fileOptions: [
+          {
+            files: ["**/*.css", "**/*.js", "**/*.mjs"],
+            cacheControl: "max-age=31536000,public,immutable",
+          },
+          {
+            files: "**/*.html",
+            cacheControl: "max-age=0,no-cache,no-store,must-revalidate",
+          },
+          {
+            files: [
+              "**/*.png",
+              "**/*.jpg",
+              "**/*.jpeg",
+              "**/*.gif",
+              "**/*.svg",
+              "**/*.ico",
+              "**/*.pdf",
+              "**/*.webp",
+            ],
+            cacheControl: "max-age=2592000,public,immutable",
+          },
+          {
+            files: ["**/*.ttf", "**/*.woff", "**/*.woff2"],
+            cacheControl: "max-age=31536000,public,immutable",
+          },
+        ],
+      },
+      indexPage: "index.html",
+      errorPage: "index.html"
+    });
 
     // Create IAM role for cross-account CloudWatch Logs access
     // This allows the software provider to assume this role from their AWS account
@@ -185,51 +233,6 @@ export default $config({
 
       cloudwatchLogsRoleArn = cloudwatchLogsRole.arn;
     }
-
-    // deploy ui
-    const ui = new sst.aws.StaticSite(`${PROJECT_NAME}-ui`, {
-      build: {
-        command: "npm run build:ui",
-        output: "packages/ui/dist",
-      },
-      domain: DOMAIN_URL,
-      environment: {
-        NODE_ENV: $app.stage,
-        VITE_API_URL: $interpolate`${api.url}`,
-      },
-      assets: {
-        textEncoding: "utf-8",
-        fileOptions: [
-          {
-            files: ["**/*.css", "**/*.js", "**/*.mjs"],
-            cacheControl: "max-age=31536000,public,immutable",
-          },
-          {
-            files: "**/*.html",
-            cacheControl: "max-age=0,no-cache,no-store,must-revalidate",
-          },
-          {
-            files: [
-              "**/*.png",
-              "**/*.jpg",
-              "**/*.jpeg",
-              "**/*.gif",
-              "**/*.svg",
-              "**/*.ico",
-              "**/*.pdf",
-              "**/*.webp",
-            ],
-            cacheControl: "max-age=2592000,public,immutable",
-          },
-          {
-            files: ["**/*.ttf", "**/*.woff", "**/*.woff2"],
-            cacheControl: "max-age=31536000,public,immutable",
-          },
-        ],
-      },
-      indexPage: "index.html",
-      errorPage: "index.html"
-    });
 
     return {
       api: api.url,

@@ -3,14 +3,6 @@ import envParsed from '@/env-parsed'
 
 const DEXSCREENER_API_BASE = 'https://api.dexscreener.com'
 const CHAIN_ID = "arbitrum"
-
-/**
- * Validate if an address is a valid Ethereum address (0x-prefixed, 42 characters)
- */
-function isValidEthereumAddress(address: string): boolean {
-    return /^0x[a-fA-F0-9]{40}$/.test(address)
-}
-
 /**
  * DexScreener API response schemas
  */

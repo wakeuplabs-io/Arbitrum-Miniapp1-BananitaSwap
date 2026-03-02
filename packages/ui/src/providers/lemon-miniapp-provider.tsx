@@ -1,6 +1,9 @@
 import { getNetworkConfig } from '@/shared/config/network'
 import { authenticate, deposit, withdraw, isLemonWebView, TransactionResult, TokenName } from '@lemoncash/mini-app-sdk'
-import { createContext, useContext, type ReactNode, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, type ReactNode, useEffect, useState, useCallback, useRef } from 'react'
+import { fetchNonce, generateFallbackNonce, verifySignature } from '@/services/auth-api'
+
+export type AuthLogEntry = { id: number; time: string; message: string }
 
 type LemonMiniappContextType = {
     wallet: string | undefined
@@ -11,49 +14,116 @@ type LemonMiniappContextType = {
     handleWithdraw: (amount: string, tokenName: TokenName) => Promise<void>
     isAuthenticating: boolean
     setWallet: (address: string | undefined) => void
+    authLogs: AuthLogEntry[]
+    clearAuthLogs: () => void
 }
 
 const LemonMiniappContext = createContext<LemonMiniappContextType | undefined>(undefined)
+
+function now() {
+    return new Date().toISOString()
+}
 
 export function LemonMiniappProvider({ children }: { children: ReactNode }) {
     const [wallet, setWallet] = useState<string | undefined>(undefined)
     const [isAuthenticating, setIsAuthenticating] = useState(false)
     const [isInLemonWebView, setIsInLemonWebView] = useState(false)
+    const [authLogs, setAuthLogs] = useState<AuthLogEntry[]>([])
+    const logIdRef = useRef(0)
+
+    const addAuthLog = useCallback((message: string) => {
+        const id = ++logIdRef.current
+        setAuthLogs((prev) => [...prev, { id, time: now(), message }])
+    }, [])
+
+    const clearAuthLogs = useCallback(() => {
+        setAuthLogs([])
+    }, [])
 
     useEffect(() => {
+        addAuthLog('Provider mounted')
         async function checkWebView() {
+            addAuthLog('checkWebView: calling isLemonWebView()')
             const inLemonWebView = await isLemonWebView()
+            addAuthLog(`checkWebView: isLemonWebView() => ${inLemonWebView}`)
             setIsInLemonWebView(inLemonWebView)
         }
         checkWebView()
-    }, [])
+    }, [addAuthLog])
 
     const handleAuthentication = useCallback(async () => {
+        addAuthLog('handleAuthentication: called')
         const inLemonWebView = await isLemonWebView()
+        addAuthLog(`handleAuthentication: isLemonWebView() => ${inLemonWebView}`)
         if (!inLemonWebView) {
+            addAuthLog('handleAuthentication: not in Lemon WebView, skipping')
             return
         }
 
         setIsAuthenticating(true)
+        let nonce: string
+        try {
+            addAuthLog('handleAuthentication: fetching nonce from backend')
+            nonce = await fetchNonce()
+            addAuthLog(`handleAuthentication: nonce received (length ${nonce.length})`)
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            addAuthLog(`handleAuthentication: nonce fetch failed => ${msg}, using fallback`)
+            nonce = generateFallbackNonce()
+        }
+
+        addAuthLog('handleAuthentication: calling authenticate({ nonce, chainId })')
         try {
             const result = await authenticate({
+                nonce,
                 chainId: getNetworkConfig().chain.id,
             })
+            addAuthLog(`handleAuthentication: authenticate() result => ${result.result}`)
+
             if (result.result === TransactionResult.SUCCESS) {
-                setWallet(result.data.wallet)
+                const { wallet: walletAddr, signature, message } = result.data
+                addAuthLog('handleAuthentication: verifying signature on backend')
+                const verification = await verifySignature({
+                    wallet: walletAddr,
+                    signature,
+                    message,
+                    nonce,
+                })
+                if (verification.verified) {
+                    setWallet(walletAddr)
+                    addAuthLog(`handleAuthentication: verified, wallet set => ${walletAddr.slice(0, 10)}...`)
+                } else {
+                    const verifyUnavailable =
+                        verification.error?.includes('404') ||
+                        verification.error?.toLowerCase().includes('failed to fetch')
+                    if (verifyUnavailable) {
+                        setWallet(walletAddr)
+                        addAuthLog('handleAuthentication: verify endpoint unavailable, wallet set (dev fallback)')
+                    } else {
+                        addAuthLog(`handleAuthentication: verification failed => ${verification.error ?? 'unknown'}`)
+                    }
+                }
+            } else if (result.result === TransactionResult.FAILED) {
+                addAuthLog(`handleAuthentication: FAILED => ${result.error.message} (${result.error.code})`)
+            } else {
+                addAuthLog('handleAuthentication: CANCELLED by user')
             }
         } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error)
+            addAuthLog(`handleAuthentication: authenticate() threw => ${msg}`)
             console.error('Authentication failed:', error)
         } finally {
             setIsAuthenticating(false)
+            addAuthLog('handleAuthentication: done (isAuthenticating=false)')
         }
-    }, [])
+    }, [addAuthLog])
 
     useEffect(() => {
         if (isInLemonWebView) {
+            addAuthLog('useEffect: isInLemonWebView true, calling handleAuthentication()')
             handleAuthentication()
         }
-    }, [isInLemonWebView, handleAuthentication])
+    }, [isInLemonWebView, handleAuthentication, addAuthLog])
 
     const handleDeposit = useCallback(async (amount: string, tokenName: TokenName) => {
         const inWebView = await isLemonWebView()
@@ -102,6 +172,8 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
         handleWithdraw,
         isAuthenticating,
         setWallet,
+        authLogs,
+        clearAuthLogs,
     }
 
     return <LemonMiniappContext.Provider value={value}>{children}</LemonMiniappContext.Provider>

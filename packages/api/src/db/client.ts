@@ -21,9 +21,9 @@ if (env.NODE_ENV === "development") {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
   });
-  db = drizzleNode(pool);
+  db = drizzleNode(pool, { schema });
 } else {
-  const sql = neon(env.DATABASE_URL);
+  const sql = neon(process.env.DATABASE_URL!);
   db = drizzleNeon(sql, { schema });
 }
 

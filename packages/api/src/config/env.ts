@@ -13,9 +13,10 @@ config({ path: path.resolve(rootDir, ".env.local") });
 
 const envSchema = z
   .object({
-    DATABASE_URL: z.string().url().optional(), //Remove optional after the database is created
+    DATABASE_URL: z.string().url(),
     PORT: z.coerce.number().default(3000),
     NODE_ENV: z.enum(["development", "production", "staging"]).default("development"),
+    RPC_URL: z.string().url(),
   })
 
 export type Env = z.infer<typeof envSchema>;

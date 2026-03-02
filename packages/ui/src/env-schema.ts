@@ -10,7 +10,7 @@ export const EnvSchema = z
         }),
       })
       .default("development"),
-    API_URL: z.string().url().optional().default("http://localhost:9999/api"),
+    API_URL: z.string().url().optional().default("http://localhost:9999"),
     RPC_URL: z.string().url().optional(),
     USDC_TOKEN_ADDRESS: z.string(),
   })

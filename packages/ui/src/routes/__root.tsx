@@ -1,16 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import React from "react";
 import { TokenControlPanel } from "@/components/portfolio/token-control-panel";
-
-const TanStackRouterDevtools =
-	process.env.NODE_ENV === "production"
-		? () => null // Render nothing in production
-		: React.lazy(() =>
-			/* eslint-disable indent */
-			import("@tanstack/router-devtools").then((res) => ({
-				default: res.TanStackRouterDevtools,
-			}))
-		);
 
 function RootComponent() {
 	return (
@@ -33,7 +22,6 @@ function RootComponent() {
 					/>
 				</main>
 				<TokenControlPanel />
-				<TanStackRouterDevtools />
 			</div>
 		</div>
 	)

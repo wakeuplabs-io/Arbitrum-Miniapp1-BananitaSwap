@@ -30,6 +30,7 @@
     "drizzle-orm": "0.33.0",
     "esbuild": "0.25.11",
     "hono": "4.10.5",
+    "viem": "2.46.3",
     "zod": "3.25.76"
   },
   "devDependencies": {
