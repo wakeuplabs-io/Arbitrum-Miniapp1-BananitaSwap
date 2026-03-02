@@ -62,8 +62,8 @@ jobs:
         run: npm run deploy:app:staging
         env:
           DOMAIN_URL: ${{ vars.DOMAIN_URL }}
-          USDC_TOKEN_ADDRESS: ${{ vars.USDC_TOKEN_ADDRESS }}
-          RPC_URL: ${{ secrets.RPC_URL }}
+          RPC_URL_SEPOLIA: ${{ secrets.RPC_URL_SEPOLIA }}
+          RPC_URL_MAINNET: ${{ secrets.RPC_URL_MAINNET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Save Outputs

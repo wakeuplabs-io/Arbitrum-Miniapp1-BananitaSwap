@@ -3,6 +3,7 @@ import { Settings2, X, Plus, Trash2, RotateCcw, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useMockTokenState } from '@/contexts/mock-token-state'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useAllTokens } from '@/hooks/use-tokens'
@@ -11,6 +12,7 @@ import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 
 export function TokenControlPanel() {
     const [isOpen, setIsOpen] = useState(false)
+    const { portfolioChain, setPortfolioChain } = usePortfolioChain()
 
     const {
         updateTokenAmount,
@@ -20,7 +22,7 @@ export function TokenControlPanel() {
         isMocking,
     } = useMockTokenState()
 
-    const { holdings, getAvailableTokens } = useUserHoldings()
+    const { holdings, getAvailableTokens } = useUserHoldings(portfolioChain)
     const { data: allTokens } = useAllTokens()
     const { wallet, setWallet } = useLemonMiniapp()
     const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>('')
@@ -109,6 +111,36 @@ export function TokenControlPanel() {
 
                     {/* Content - scrollable */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {/* Portfolio view chain (Sepolia vs Mainnet) */}
+                        <div>
+                            <h4 className="text-xs font-display font-semibold uppercase tracking-wide text-foreground mb-2">
+                                Portfolio view
+                            </h4>
+                            <p className="text-[10px] text-muted-foreground mb-2">
+                                Which chain to load balances from on the portfolio screen.
+                            </p>
+                            <div className="flex rounded-full border border-border bg-muted/50 p-0.5 w-fit">
+                                <Button
+                                    type="button"
+                                    variant={portfolioChain === 'sepolia' ? 'default' : 'ghost'}
+                                    size="xs"
+                                    onClick={() => setPortfolioChain('sepolia')}
+                                    className="rounded-full"
+                                >
+                                    Sepolia
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={portfolioChain === 'mainnet' ? 'default' : 'ghost'}
+                                    size="xs"
+                                    onClick={() => setPortfolioChain('mainnet')}
+                                    className="rounded-full"
+                                >
+                                    Mainnet
+                                </Button>
+                            </div>
+                        </div>
+
                         {/* Wallet Address Control */}
                         <div>
                             <h4 className="text-xs font-display font-semibold uppercase tracking-wide text-foreground mb-2 flex items-center gap-2">

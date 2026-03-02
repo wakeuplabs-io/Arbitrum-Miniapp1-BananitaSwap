@@ -1,23 +1,37 @@
 import { useQuery } from '@tanstack/react-query'
 import { getTokenPairs, getTokensInfo, searchTokenPairs, type DexScreenerPair } from '@/services/dexscreener'
+import {
+    ARBITRUM_MAINNET_USDC_ADDRESS,
+    ARBITRUM_SEPOLIA_USDC_ADDRESS,
+} from '@/shared/config/network'
+import type { PortfolioChain } from '@/shared/config/network'
 import type { Token } from '@/lib/tokens'
 
+const USDC_BASE: Omit<Token, 'address' | 'chainId'> = {
+    symbol: 'USDC',
+    name: 'USD Coin',
+    icon: 'usdc',
+    logoUrl: 'https://assets.coingecko.com/coins/images/6319/small/usdc.png',
+    color: '#2775CA',
+    price: 1.0,
+    change24h: 0,
+    marketCap: '$32B',
+}
+
 /**
- * Get the USDC token (always available as base currency)
+ * Get USDC token for a specific chain (e.g. portfolio view).
+ */
+export function getUsdcTokenForChain(chain: PortfolioChain): Token {
+    const address = chain === 'mainnet' ? ARBITRUM_MAINNET_USDC_ADDRESS : ARBITRUM_SEPOLIA_USDC_ADDRESS
+    const chainId = chain === 'mainnet' ? 'arbitrum' : 'arbitrum-sepolia'
+    return { ...USDC_BASE, address, chainId }
+}
+
+/**
+ * Get the USDC token for swap screen. Always mainnet (DexScreener is mainnet-only).
  */
 export function getUsdcToken(): Token {
-    return {
-        symbol: 'USDC',
-        name: 'USD Coin',
-        icon: 'usdc',
-        logoUrl: 'https://assets.coingecko.com/coins/images/6319/small/usdc.png',
-        color: '#2775CA',
-        price: 1.0,
-        change24h: 0,
-        marketCap: '$32B',
-        address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
-        chainId: 'arbitrum',
-    }
+    return getUsdcTokenForChain('mainnet')
 }
 
 
@@ -83,7 +97,7 @@ export function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
 
 /**
  * Hook to fetch token pairs from DexScreener using the token-pairs endpoint
- * Fetches pairs for USDC token address (from env var USDC_TOKEN_ADDRESS)
+ * Fetches pairs for USDC token address (mainnet only; DexScreener is mainnet-only)
  * Converts pairs to tokens, always includes USDC as the first token
  */
 export function useAllTokens() {

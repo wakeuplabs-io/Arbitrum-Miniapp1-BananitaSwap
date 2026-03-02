@@ -1,10 +1,10 @@
 import { EnvSchema } from "./env-schema.js";
 
 const env = {
-  RPC_URL: import.meta.env.VITE_RPC_URL,
+  RPC_URL_SEPOLIA: import.meta.env.VITE_RPC_URL_SEPOLIA,
+  RPC_URL_MAINNET: import.meta.env.VITE_RPC_URL_MAINNET,
   NODE_ENV: import.meta.env.NODE_ENV,
   API_URL: import.meta.env.VITE_API_URL,
-  USDC_TOKEN_ADDRESS: import.meta.env.VITE_USDC_TOKEN_ADDRESS,
 };
 
 const parseResult = EnvSchema.safeParse(env);

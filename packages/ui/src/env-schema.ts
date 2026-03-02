@@ -11,9 +11,8 @@ export const EnvSchema = z
       })
       .default("development"),
     API_URL: z.string().url().optional().default("http://localhost:3000"),
-    RPC_URL: z.string().url().optional(),
-    USDC_TOKEN_ADDRESS: z.string(),
-  })
-  ;
+    RPC_URL_SEPOLIA: z.string().url().optional(),
+    RPC_URL_MAINNET: z.string().url().optional(),
+  });
 
 export type Env = z.infer<typeof EnvSchema>;

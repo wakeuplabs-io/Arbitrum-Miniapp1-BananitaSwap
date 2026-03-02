@@ -1,18 +1,22 @@
 import { useMemo, useCallback } from 'react'
 import type { Token } from '@/lib/tokens'
 import { useMockTokenState } from '@/contexts/mock-token-state'
+import {
+    ARBITRUM_MAINNET_USDC_ADDRESS,
+    ARBITRUM_SEPOLIA_USDC_ADDRESS,
+} from '@/shared/config/network'
+import type { PortfolioChain } from '@/shared/config/network'
 import { useOwnedTokens } from './use-owned-tokens'
-import { getUsdcToken } from './use-tokens'
+import { getUsdcTokenForChain } from './use-tokens'
 
 export type TokenHolding = { token: Token; amount: number }
 
 /**
  * Internal hook to retrieve raw user holdings from owned tokens
- * Converts owned tokens data to TokenHolding format
- * @returns Array of token holdings and loading state
+ * @param chain - Which chain the balances are from (portfolio view). Default mainnet.
  */
-function useRawUserHoldings() {
-    const { data: ownedTokensData, isLoading } = useOwnedTokens()
+function useRawUserHoldings(chain: PortfolioChain = 'mainnet') {
+    const { data: ownedTokensData, isLoading } = useOwnedTokens(chain)
 
     const holdings = useMemo(() => {
         if (!ownedTokensData || !ownedTokensData.tokens || !ownedTokensData.balances) {
@@ -20,7 +24,11 @@ function useRawUserHoldings() {
         }
 
         const holdings: TokenHolding[] = []
-        const usdc = getUsdcToken()
+        const usdcToken = getUsdcTokenForChain(chain)
+        const usdcAddressForLookup =
+            chain === 'mainnet'
+                ? ARBITRUM_MAINNET_USDC_ADDRESS.toLowerCase()
+                : ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
 
         // Add all owned tokens (including USDC)
         for (const token of ownedTokensData.tokens) {
@@ -34,32 +42,31 @@ function useRawUserHoldings() {
         }
 
         // Also add USDC if it's in balances but not in tokens (edge case)
-        const usdcBalance = ownedTokensData.balances.get(usdc.address?.toLowerCase() || '')
+        const usdcBalance = ownedTokensData.balances.get(usdcAddressForLookup)
         if (usdcBalance && usdcBalance > 0) {
             const hasUsdcInTokens = holdings.some(
-                (h) => h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdc.address?.toLowerCase()
+                (h) => h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdcAddressForLookup
             )
             if (!hasUsdcInTokens) {
                 holdings.push({
-                    token: usdc,
+                    token: usdcToken,
                     amount: usdcBalance,
                 })
             }
         }
 
         return holdings
-    }, [ownedTokensData])
+    }, [ownedTokensData, chain])
 
     return { holdings, isLoading }
 }
 
 /**
  * Hook to get current holdings (mock or user holdings)
- * Works both inside and outside MockTokenStateProvider
- * Returns holdings with helper methods
+ * @param chain - Which chain to show (portfolio only). Omit for default (mainnet); pass from usePortfolioChain() on portfolio screen.
  */
-export function useUserHoldings() {
-    const { holdings: rawUserHoldings, isLoading: isLoadingOwnedTokens } = useRawUserHoldings()
+export function useUserHoldings(chain: PortfolioChain = 'mainnet') {
+    const { holdings: rawUserHoldings, isLoading: isLoadingOwnedTokens } = useRawUserHoldings(chain)
     let mockHoldings: TokenHolding[] | null = null
     try {
         const mockState = useMockTokenState()

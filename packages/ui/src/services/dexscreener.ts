@@ -1,8 +1,9 @@
 import { z } from 'zod'
-import envParsed from '@/env-parsed'
+import { ARBITRUM_MAINNET_USDC_ADDRESS } from '@/shared/config/network'
 
 const DEXSCREENER_API_BASE = 'https://api.dexscreener.com'
-const CHAIN_ID = "arbitrum"
+/** DexScreener only supports mainnet; always use Arbitrum mainnet for API calls */
+const DEXSCREENER_CHAIN_ID = 'arbitrum'
 /**
  * DexScreener API response schemas
  */
@@ -41,8 +42,7 @@ export type DexScreenerPair = z.infer<typeof PairSchema>
 export type DexScreenerSearchResponse = z.infer<typeof SearchResponseSchema>
 
 /**
- * Check if a pair is from Arbitrum chain
- * Filters pairs to ensure only Arbitrum tokens are returned
+ * Check if a pair is from Arbitrum chain (mainnet only; DexScreener has no testnet)
  */
 function isArbitrumPair(pair: DexScreenerPair): boolean {
     const chainId = pair.chainId?.toLowerCase() || ''
@@ -81,7 +81,7 @@ function filterAllowedDexs(pairs: DexScreenerPair[]): DexScreenerPair[] {
 }
 
 /**
- * Known USDC addresses on Arbitrum
+ * Known USDC addresses on Arbitrum mainnet (DexScreener is mainnet-only)
  * - Native USDC: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831
  * - Bridged USDC (USDC.e): 0xff970a61a04b1ca14834a43f5de4533ebddb5cc8
  */
@@ -193,7 +193,7 @@ export async function getTokensInfo(
         }
 
         const addressesParam = tokenAddresses.join(',')
-        const url = `${DEXSCREENER_API_BASE}/tokens/v1/${CHAIN_ID}/${addressesParam}`
+        const url = `${DEXSCREENER_API_BASE}/tokens/v1/${DEXSCREENER_CHAIN_ID}/${addressesParam}`
 
         const response = await fetch(url)
 
@@ -258,13 +258,13 @@ export async function getTokensInfo(
 /**
  * Get token pairs for a specific token address
  * Uses /token-pairs/v1/{chainId}/{tokenAddress} endpoint
- * @param tokenAddress - Token address to get pairs for (defaults to USDC_TOKEN_ADDRESS from env)
+ * @param tokenAddress - Token address to get pairs for (mainnet USDC)
  * @returns Array of pairs for the token
  */
 export async function getTokenPairs(): Promise<DexScreenerPair[]> {
     try {
-        const address = envParsed.USDC_TOKEN_ADDRESS
-        const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${CHAIN_ID}/${address}`
+        const address = ARBITRUM_MAINNET_USDC_ADDRESS
+        const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${DEXSCREENER_CHAIN_ID}/${address}`
 
         const response = await fetch(url)
 
@@ -307,7 +307,7 @@ export async function getTokenPairsForAddresses(
 
         const batchPromises = batch.map(async (address) => {
             try {
-                const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${CHAIN_ID}/${address}`
+                const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${DEXSCREENER_CHAIN_ID}/${address}`
                 const response = await fetch(url)
 
                 if (!response.ok) {

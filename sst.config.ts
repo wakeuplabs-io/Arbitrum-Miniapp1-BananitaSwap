@@ -96,8 +96,8 @@ export default $config({
       environment: {
         NODE_ENV: $app.stage,
         VITE_API_URL: $interpolate`${api.url}`,
-        VITE_RPC_URL: process.env.RPC_URL!,
-        VITE_USDC_TOKEN_ADDRESS: process.env.USDC_TOKEN_ADDRESS!,
+        VITE_RPC_URL_SEPOLIA: process.env.RPC_URL_SEPOLIA!,
+        VITE_RPC_URL_MAINNET: process.env.RPC_URL_MAINNET!,
       },
       assets: {
         textEncoding: "utf-8",

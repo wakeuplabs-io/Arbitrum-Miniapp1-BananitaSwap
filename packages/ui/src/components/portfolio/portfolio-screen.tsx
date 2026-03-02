@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenIcon } from '@/components/swap/token-icon'
 import { TokensEmptyState } from './tokens-empty-state'
+import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useAvatar } from '@/hooks/use-avatar'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
@@ -25,7 +26,9 @@ export function PortfolioScreen({
 	onBuyToken,
 }: PortfolioScreenProps) {
 	const navigate = useNavigate()
-	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } = useUserHoldings()
+	const { portfolioChain } = usePortfolioChain()
+	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
+		useUserHoldings(portfolioChain)
 	const avatarUrl = useAvatar()
 	const { wallet, isAuthenticated, isInLemonWebView, isAuthenticating, authLogs, clearAuthLogs } = useLemonMiniapp()
 	const [copied, setCopied] = useState(false)

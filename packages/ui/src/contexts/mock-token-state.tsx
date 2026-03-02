@@ -1,9 +1,14 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react'
 import type { Token } from '@/lib/tokens'
+import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings, type TokenHolding } from '@/hooks/use-user-holdings'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { useOwnedTokens } from '@/hooks/use-owned-tokens'
-import { getUsdcToken } from '@/hooks/use-tokens'
+import {
+    ARBITRUM_MAINNET_USDC_ADDRESS,
+    ARBITRUM_SEPOLIA_USDC_ADDRESS,
+} from '@/shared/config/network'
+import { getUsdcTokenForChain } from '@/hooks/use-tokens'
 
 type MockTokenStateContextType = {
     mockHoldings: TokenHolding[] | null
@@ -22,21 +27,28 @@ const MockTokenStateContext = createContext<MockTokenStateContextType | undefine
 
 export function MockTokenStateProvider({ children }: { children: ReactNode }) {
     const [mockHoldings, setMockHoldings] = useState<TokenHolding[] | null>(null)
-    const { holdings: userHoldings } = useUserHoldings()
+    const { portfolioChain } = usePortfolioChain()
+    const { holdings: userHoldings } = useUserHoldings(portfolioChain)
     const { wallet } = useLemonMiniapp()
-    const { data: ownedTokensData, isLoading: isLoadingOwnedTokens } = useOwnedTokens()
+    const { data: ownedTokensData, isLoading: isLoadingOwnedTokens } = useOwnedTokens(portfolioChain)
     const lastWalletRef = useRef<string | undefined>(undefined)
+    const lastChainRef = useRef<typeof portfolioChain>(portfolioChain)
 
-    // When wallet address is set and holdings are loaded, copy them to mock holdings
+    // When wallet address is set and holdings are loaded, copy them to mock holdings (using selected portfolio chain)
     useEffect(() => {
         const hasValidWallet = wallet && wallet !== 'undefined' && wallet.trim() !== ''
         const walletChanged = wallet !== lastWalletRef.current
+        const chainChanged = portfolioChain !== lastChainRef.current
 
         if (hasValidWallet && !isLoadingOwnedTokens && ownedTokensData) {
-            // Only sync if wallet changed (to avoid overwriting user edits)
-            if (walletChanged) {
+            // Sync when wallet or portfolio chain changed (so Sepolia/Mainnet switch refetches and shows correct USDC)
+            if (walletChanged || chainChanged) {
                 const holdings: TokenHolding[] = []
-                const usdc = getUsdcToken()
+                const usdcToken = getUsdcTokenForChain(portfolioChain)
+                const usdcAddressForLookup =
+                    portfolioChain === 'mainnet'
+                        ? ARBITRUM_MAINNET_USDC_ADDRESS.toLowerCase()
+                        : ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
 
                 // Add all owned tokens (including USDC)
                 if (ownedTokensData.tokens && ownedTokensData.balances) {
@@ -51,14 +63,14 @@ export function MockTokenStateProvider({ children }: { children: ReactNode }) {
                     }
 
                     // Also add USDC if it's in balances but not in tokens (edge case)
-                    const usdcBalance = ownedTokensData.balances.get(usdc.address?.toLowerCase() || '')
+                    const usdcBalance = ownedTokensData.balances.get(usdcAddressForLookup)
                     if (usdcBalance && usdcBalance > 0) {
                         const hasUsdcInTokens = holdings.some(
-                            (h) => h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdc.address?.toLowerCase()
+                            (h) => h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdcAddressForLookup
                         )
                         if (!hasUsdcInTokens) {
                             holdings.push({
-                                token: usdc,
+                                token: usdcToken,
                                 amount: usdcBalance,
                             })
                         }
@@ -79,7 +91,8 @@ export function MockTokenStateProvider({ children }: { children: ReactNode }) {
         }
 
         lastWalletRef.current = wallet
-    }, [wallet, ownedTokensData, isLoadingOwnedTokens])
+        lastChainRef.current = portfolioChain
+    }, [wallet, ownedTokensData, isLoadingOwnedTokens, portfolioChain])
 
     const updateTokenAmount = useCallback((symbol: string, amount: number) => {
         setMockHoldings((prev) => {
