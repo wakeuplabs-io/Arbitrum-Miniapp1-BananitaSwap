@@ -8,8 +8,10 @@ import { arbitrum } from "viem/chains";
 import { db } from "../db/client.js";
 import { authNonce } from "../db/schema.js";
 import { env } from "../config/env.js";
+import { signJwt } from "../lib/jwt.js";
+import type { AuthVariables } from "../middleware/auth.js";
 
-export const authRouter = new Hono();
+export const authRouter = new Hono<{ Variables: AuthVariables }>();
 
 const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -117,6 +119,14 @@ authRouter.post(
       return c.json({ verified: false, error: "Server error" }, 500);
     }
     cleanupExpiredNonces();
-    return c.json({ verified: true });
+
+    let token: string;
+    try {
+      token = await signJwt(body.wallet);
+    } catch (e) {
+      console.error("[Auth] JWT sign failed:", e);
+      return c.json({ verified: false, error: "Server error" }, 500);
+    }
+    return c.json({ verified: true, token });
   }
 );

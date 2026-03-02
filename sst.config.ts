@@ -61,6 +61,8 @@ export default $config({
         NODE_ENV: $app.stage,
         DATABASE_URL: process.env.DATABASE_URL!,
         RPC_URL: process.env.RPC_URL_MAINNET!,
+        JWT_SECRET: process.env.JWT_SECRET!,
+        PINATA_JWT: process.env.PINATA_JWT!,
       },
     });
 

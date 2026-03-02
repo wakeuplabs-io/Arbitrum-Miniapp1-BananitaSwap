@@ -7,6 +7,7 @@ export type AuthLogEntry = { id: number; time: string; message: string }
 
 type LemonMiniappContextType = {
     wallet: string | undefined
+    authToken: string | undefined
     isAuthenticated: boolean
     isInLemonWebView: boolean
     handleAuthentication: () => Promise<void>
@@ -16,6 +17,7 @@ type LemonMiniappContextType = {
     setWallet: (address: string | undefined) => void
     authLogs: AuthLogEntry[]
     clearAuthLogs: () => void
+    getAuthHeaders: () => Record<string, string>
 }
 
 const LemonMiniappContext = createContext<LemonMiniappContextType | undefined>(undefined)
@@ -26,6 +28,7 @@ function now() {
 
 export function LemonMiniappProvider({ children }: { children: ReactNode }) {
     const [wallet, setWallet] = useState<string | undefined>(undefined)
+    const [authToken, setAuthToken] = useState<string | undefined>(undefined)
     const [isAuthenticating, setIsAuthenticating] = useState(false)
     const [isInLemonWebView, setIsInLemonWebView] = useState(false)
     const [authLogs, setAuthLogs] = useState<AuthLogEntry[]>([])
@@ -39,6 +42,16 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
     const clearAuthLogs = useCallback(() => {
         setAuthLogs([])
     }, [])
+
+    const setWalletAndToken = useCallback((address: string | undefined, token?: string) => {
+        setWallet(address)
+        setAuthToken(address ? token ?? undefined : undefined)
+    }, [])
+
+    const getAuthHeaders = useCallback((): Record<string, string> => {
+        if (!authToken) return {}
+        return { Authorization: `Bearer ${authToken}` }
+    }, [authToken])
 
     useEffect(() => {
         addAuthLog('Provider mounted')
@@ -81,23 +94,23 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
             addAuthLog(`handleAuthentication: authenticate() result => ${result.result}`)
 
             if (result.result === TransactionResult.SUCCESS) {
-                const { wallet: walletAddr, signature, message } = result.data
+                const { wallet: walletAddress, signature, message } = result.data
                 addAuthLog('handleAuthentication: verifying signature on backend')
                 const verification = await verifySignature({
-                    wallet: walletAddr,
+                    wallet: walletAddress,
                     signature,
                     message,
                     nonce,
                 })
                 if (verification.verified) {
-                    setWallet(walletAddr)
-                    addAuthLog(`handleAuthentication: verified, wallet set => ${walletAddr.slice(0, 10)}...`)
+                    setWalletAndToken(walletAddress, verification.token)
+                    addAuthLog(`handleAuthentication: verified, wallet set => ${walletAddress.slice(0, 10)}...`)
                 } else {
                     const verifyUnavailable =
                         verification.error?.includes('404') ||
                         verification.error?.toLowerCase().includes('failed to fetch')
                     if (verifyUnavailable) {
-                        setWallet(walletAddr)
+                        setWalletAndToken(walletAddress)
                         addAuthLog('handleAuthentication: verify endpoint unavailable, wallet set (dev fallback)')
                     } else {
                         addAuthLog(`handleAuthentication: verification failed => ${verification.error ?? 'unknown'}`)
@@ -116,7 +129,7 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
             setIsAuthenticating(false)
             addAuthLog('handleAuthentication: done (isAuthenticating=false)')
         }
-    }, [addAuthLog])
+    }, [addAuthLog, setWalletAndToken])
 
     useEffect(() => {
         if (isInLemonWebView) {
@@ -164,15 +177,17 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
 
     const value: LemonMiniappContextType = {
         wallet,
+        authToken,
         isAuthenticated: !!wallet,
         isInLemonWebView,
         handleAuthentication,
         handleDeposit,
         handleWithdraw,
         isAuthenticating,
-        setWallet,
+        setWallet: (address) => setWalletAndToken(address),
         authLogs,
         clearAuthLogs,
+        getAuthHeaders,
     }
 
     return <LemonMiniappContext.Provider value={value}>{children}</LemonMiniappContext.Provider>

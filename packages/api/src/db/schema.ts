@@ -14,3 +14,10 @@ export const authNonce = pgTable("auth_nonce", {
   used: boolean("used").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** User profile data keyed by wallet address */
+export const userProfile = pgTable("user_profile", {
+  userAddress: text("user_address").primaryKey(),
+  profileImageUrl: text("profile_image_url"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

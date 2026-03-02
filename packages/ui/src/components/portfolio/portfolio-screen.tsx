@@ -1,12 +1,12 @@
-import { DollarSign, ArrowLeftRight, ArrowDownToLine, Copy, Check } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { DollarSign, ArrowLeftRight, ArrowDownToLine, Copy, Check, X, Pencil } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenIcon } from '@/components/swap/token-icon'
 import { TokensEmptyState } from './tokens-empty-state'
 import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
-import { useAvatar } from '@/hooks/use-avatar'
+import { useUserProfile } from '@/hooks/use-user-profile'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import type { Token } from '@/lib/tokens'
 
@@ -29,13 +29,44 @@ export function PortfolioScreen({
 	const { portfolioChain } = usePortfolioChain()
 	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
 		useUserHoldings(portfolioChain)
-	const avatarUrl = useAvatar()
+	const profile = useUserProfile()
 	const { wallet, isAuthenticated, isInLemonWebView, isAuthenticating, authLogs, clearAuthLogs } = useLemonMiniapp()
 	const [copied, setCopied] = useState(false)
+	const [avatarError, setAvatarError] = useState<string | null>(null)
+	const fileInputRef = useRef<HTMLInputElement>(null)
+
+	const handleAvatarClick = useCallback(() => {
+		setAvatarError(null)
+		fileInputRef.current?.click()
+	}, [])
+
+	const handleAvatarFileChange = useCallback(
+		async (e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0]
+			e.target.value = ''
+			if (!file) return
+			const result = await profile.setAvatarFromFile(file)
+			if (result.success) {
+				setAvatarError(null)
+			} else {
+				setAvatarError(result.error ?? 'Error uploading image')
+			}
+		},
+		[profile]
+	)
+
+	const handleRemoveAvatar = useCallback(
+		(e: React.MouseEvent) => {
+			e.stopPropagation()
+			profile.clearAvatar()
+			setAvatarError(null)
+		},
+		[profile]
+	)
 
 	const handleCopyAddress = async () => {
 		if (!wallet) return
-		
+
 		try {
 			await navigator.clipboard.writeText(wallet)
 			setCopied(true)
@@ -60,14 +91,63 @@ export function PortfolioScreen({
 	return (
 		<div className="flex flex-col h-full overflow-y-auto pb-20">
 			<div className="flex flex-col items-center gap-3 pt-8 pb-4 animate-fade-in-up">
-				{avatarUrl && (
-					<div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-accent shadow-lg shadow-primary/40">
-						<img
-							src={avatarUrl}
-							alt=""
-							className="h-full w-full rounded-full object-cover"
-						/>
-					</div>
+				<div className="relative">
+					<button
+						type="button"
+						onClick={handleAvatarClick}
+						aria-label="Change profile photo"
+						className={"avatar-interactive flex h-20 w-20 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"}
+					>
+						<div className={`flex items-center justify-center rounded-full overflow-hidden ${profile.avatarDataUrl
+							? 'h-[4.25rem] w-[4.25rem] border border-border bg-card'
+							: 'h-full w-full'
+							}`}>
+							{profile.avatarDataUrl ? (
+								<img
+									src={profile.avatarDataUrl}
+									alt=""
+									className="h-full w-full object-cover"
+								/>
+							) : (
+								<img
+									src="/avatar-empty-state.webp"
+									alt=""
+									className="h-full w-full object-cover object-center scale-110"
+								/>
+							)}
+						</div>
+					</button>
+					<button
+						type="button"
+						onClick={handleAvatarClick}
+						aria-label="Change profile photo"
+						className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+					>
+						<Pencil className="h-3 w-3" strokeWidth={2.5} />
+					</button>
+					{profile.avatarDataUrl && (
+						<button
+							type="button"
+							onClick={handleRemoveAvatar}
+							aria-label="Remove profile photo"
+							className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+						>
+							<X className="h-3.5 w-3.5" strokeWidth={2.5} />
+						</button>
+					)}
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept="image/*"
+						className="sr-only"
+						aria-hidden
+						onChange={handleAvatarFileChange}
+					/>
+				</div>
+				{avatarError && (
+					<p className="text-xs text-destructive text-center max-w-[240px]">
+						{avatarError}
+					</p>
 				)}
 				{wallet && (
 					<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border">

@@ -65,6 +65,8 @@ jobs:
           RPC_URL_SEPOLIA: ${{ secrets.RPC_URL_SEPOLIA }}
           RPC_URL_MAINNET: ${{ secrets.RPC_URL_MAINNET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PINATA_JWT: ${{ secrets.PINATA_JWT }}
 
       - name: Save Outputs
         id: save-outputs

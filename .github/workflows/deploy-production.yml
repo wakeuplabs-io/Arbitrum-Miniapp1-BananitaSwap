@@ -46,6 +46,12 @@ jobs:
             "cd packages/api && npm ci --prefer-offline --no-audit" \
             "cd packages/ui && npm ci --prefer-offline --no-audit"
 
+      - name: Migrate database
+        working-directory: ./packages/api
+        run: npm run db:generate && npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Remove system Pulumi (avoid version conflicts)
         run: |
           sudo rm -f /usr/local/bin/pulumi*
@@ -57,6 +63,9 @@ jobs:
           DOMAIN_URL: ${{ vars.DOMAIN_URL }}
           RPC_URL_SEPOLIA: ${{ secrets.RPC_URL_SEPOLIA }}
           RPC_URL_MAINNET: ${{ secrets.RPC_URL_MAINNET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PINATA_JWT: ${{ secrets.PINATA_JWT }}
 
       - name: Save Outputs
         id: save-outputs

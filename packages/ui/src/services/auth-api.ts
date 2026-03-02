@@ -28,10 +28,10 @@ export type VerifyPayload = {
   nonce: string
 }
 
-export type VerifyResult = { verified: boolean; error?: string }
+export type VerifyResult = { verified: boolean; error?: string; token?: string }
 
 /**
- * Verifies SIWE signature on the backend.
+ * Verifies SIWE signature on the backend. On success returns a JWT for authenticated API calls.
  */
 export async function verifySignature(payload: VerifyPayload): Promise<VerifyResult> {
   const res = await fetch(`${envParsed.API_URL}/auth/verify`, {
@@ -46,5 +46,6 @@ export async function verifySignature(payload: VerifyPayload): Promise<VerifyRes
   return {
     verified: !!json?.verified,
     error: json?.error,
+    token: typeof json?.token === 'string' ? json.token : undefined,
   }
 }
