@@ -21,19 +21,6 @@ export async function fetchNonce(): Promise<string> {
   return nonce
 }
 
-/**
- * Generates a fallback nonce when backend is unavailable (e.g. dev).
- * Should be replaced by backend nonce in production.
- */
-export function generateFallbackNonce(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  let out = ''
-  for (let i = 0; i < 16; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return out
-}
-
 export type VerifyPayload = {
   wallet: string
   signature: string

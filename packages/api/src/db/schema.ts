@@ -6,15 +6,6 @@ import {
   boolean,
 } from "drizzle-orm/pg-core";
 
-// placeholder table
-export const placeholder = pgTable(
-  "plcaeholder",
-  {
-    id: serial("id").primaryKey(),
-    name: text("name").notNull(),
-  },
-);
-
 /** SIWE auth nonces: unique per request, expire after short TTL, single-use */
 export const authNonce = pgTable("auth_nonce", {
   id: serial("id").primaryKey(),

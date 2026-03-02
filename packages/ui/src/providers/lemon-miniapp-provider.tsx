@@ -1,7 +1,7 @@
 import { getNetworkConfig } from '@/shared/config/network'
 import { authenticate, deposit, withdraw, isLemonWebView, TransactionResult, TokenName } from '@lemoncash/mini-app-sdk'
 import { createContext, useContext, type ReactNode, useEffect, useState, useCallback, useRef } from 'react'
-import { fetchNonce, generateFallbackNonce, verifySignature } from '@/services/auth-api'
+import { fetchNonce, verifySignature } from '@/services/auth-api'
 
 export type AuthLogEntry = { id: number; time: string; message: string }
 
@@ -68,8 +68,8 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
             addAuthLog(`handleAuthentication: nonce received (length ${nonce.length})`)
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e)
-            addAuthLog(`handleAuthentication: nonce fetch failed => ${msg}, using fallback`)
-            nonce = generateFallbackNonce()
+            addAuthLog(`handleAuthentication: nonce fetch failed => ${msg}`)
+            throw new Error(`Nonce fetch failed: ${msg}`)
         }
 
         addAuthLog('handleAuthentication: calling authenticate({ nonce, chainId })')

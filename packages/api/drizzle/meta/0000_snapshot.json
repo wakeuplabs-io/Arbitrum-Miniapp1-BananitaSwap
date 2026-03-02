@@ -1,5 +1,5 @@
 {
-  "id": "99e4b061-5a5b-46ad-ba2e-f6b878c8ee96",
+  "id": "b6b19227-fd4e-4298-a31f-2a4c5f4f063c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -53,28 +53,6 @@
           ]
         }
       }
-    },
-    "public.plcaeholder": {
-      "name": "plcaeholder",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
     }
   },
   "enums": {},
