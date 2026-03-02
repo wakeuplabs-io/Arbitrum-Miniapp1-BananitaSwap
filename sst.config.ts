@@ -60,7 +60,7 @@ export default $config({
       environment: {
         NODE_ENV: $app.stage,
         DATABASE_URL: process.env.DATABASE_URL!,
-        RPC_URL: process.env.RPC_URL!,
+        RPC_URL: process.env.RPC_URL_MAINNET!,
       },
     });
 
