@@ -19,7 +19,7 @@ version: "3.8"
 services:
   postgres:
     image: postgres:15
-    container_name: crowncat-postgres
+    container_name: arbitrum-miniapp-postgres
     environment:
       POSTGRES_DB: dev
       POSTGRES_USER: user

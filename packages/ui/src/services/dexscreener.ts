@@ -64,7 +64,7 @@ function filterArbitrumPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
 /**
  * Allowed DEX IDs for token listings
  */
-const ALLOWED_DEX_IDS = ['uniswap', 'camelot']
+const ALLOWED_DEX_IDS = ['camelot']
 
 /**
  * Filter pairs to only include allowed DEXs (Uniswap or Camelot)
