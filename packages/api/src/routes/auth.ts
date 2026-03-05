@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { arbitrum } from "viem/chains";
 import { hashMessage } from "viem";
 import { parseSiweMessage } from "viem/siwe";
 import { eq, and, gt, or, lt } from "drizzle-orm";
@@ -147,8 +148,8 @@ authRouter.post(
       });
     }
 
-    const chainId = parsed.chainId;
-    console.log("[Auth] Parsed SIWE message, chainId:", chainId);
+    const chainId = arbitrum.id; // Force Arbitrum mainnet for verification (ignore message chainId)
+    console.log("[Auth] Parsed SIWE message, original chainId:", parsed.chainId, "-> forcing", chainId);
 
     let valid: boolean;
     try {
