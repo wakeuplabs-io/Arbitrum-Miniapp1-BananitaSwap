@@ -1,5 +1,5 @@
 import { getNetworkConfig } from '@/shared/config/network'
-import { authenticate, deposit, withdraw, isLemonWebView, TransactionResult, TokenName } from '@lemoncash/mini-app-sdk'
+import { authenticate, deposit, withdraw, isLemonWebView, TransactionResult, TokenName, ClaimKey } from '@lemoncash/mini-app-sdk'
 import { createContext, useContext, type ReactNode, useEffect, useState, useCallback, useRef } from 'react'
 import { fetchNonce, verifySignature } from '@/services/auth-api'
 
@@ -90,11 +90,16 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
             const result = await authenticate({
                 nonce,
                 chainId: getNetworkConfig().chain.id,
+                requirements: {
+                    claims: [ClaimKey.LEMONTAG]
+                }
             })
             addAuthLog(`handleAuthentication: authenticate() result => ${result.result}`)
 
             if (result.result === TransactionResult.SUCCESS) {
-                const { wallet: walletAddress, signature, message } = result.data
+                const { wallet: walletAddress, signature, message, grantedClaims } = result.data
+                console.log("grantedClaims", grantedClaims)
+                console.log("result", result);
                 addAuthLog('handleAuthentication: verifying signature on backend')
                 const verification = await verifySignature({
                     wallet: walletAddress,
