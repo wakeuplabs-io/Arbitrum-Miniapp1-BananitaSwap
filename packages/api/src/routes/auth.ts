@@ -159,6 +159,17 @@ authRouter.post(
         signature: body.signature as `0x${string}`,
         blockTag: "latest", // Required for EIP-1271 smart contract wallet verification
       });
+      console.log("[Auth] /verify: verifySiweMessage result =>", valid);
+
+      if (!valid) {
+        const verifyMsgResult = await client.verifyMessage({
+          address: body.wallet as `0x${string}`,
+          message: body.message,
+          signature: body.signature as `0x${string}`,
+        });
+        console.log("[Auth] /verify: verifyMessage fallback =>", verifyMsgResult);
+        valid = verifyMsgResult;
+      }
     } catch (e) {
       console.error("[Auth] SIWE verify error:", e);
       return c.json({
