@@ -25,19 +25,10 @@ function cleanupExpiredNonces(): void {
     .catch((e) => console.error("[Auth] Nonce cleanup failed:", e));
 }
 
-const NONCE_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-/**
- * Generates a 16-char alphanumeric nonce. Uses crypto for security.
- * Shorter format improves Lemon miniapp SIWE compatibility vs 64-char hex.
- */
 function generateNonce(): string {
-  const bytes = randomBytes(16);
-  let out = "";
-  for (let i = 0; i < 16; i++) {
-    out += NONCE_CHARS[bytes[i]! % NONCE_CHARS.length];
-  }
-  return out;
+  const nonce = randomBytes(32).toString('hex');
+  return nonce;
 }
 
 /**
