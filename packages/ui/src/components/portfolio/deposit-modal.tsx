@@ -91,7 +91,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                         message="Your funds have been added to your account."
                         onDismiss={onClose}
                         buttonLabel="Done"
-                        imageSrc="/success-deposit-monkey.png"
+                        imageSrc="/success-deposit-monkey.webp"
                         imageAlt="Monkey depositing coin into pouch"
                     />
                 </DialogContent>
@@ -112,7 +112,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                         message="Check the Lemon Cash app for confirmation. If you saw an error there, the deposit did not complete."
                         onDismiss={onClose}
                         buttonLabel="Done"
-                        imageSrc="/success-deposit-monkey.png"
+                        imageSrc="/success-deposit-monkey.webp"
                         imageAlt="Monkey depositing coin into pouch"
                     />
                 </DialogContent>
