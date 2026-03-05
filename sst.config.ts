@@ -60,7 +60,8 @@ export default $config({
       environment: {
         NODE_ENV: $app.stage,
         DATABASE_URL: process.env.DATABASE_URL!,
-        RPC_URL: $app.stage === "production" ? process.env.RPC_URL_MAINNET! : process.env.RPC_URL_SEPOLIA!,
+        MAINNET_RPC_URL: process.env.RPC_URL_MAINNET!,
+        SEPOLIA_RPC_URL: process.env.RPC_URL_SEPOLIA!,
         JWT_SECRET: process.env.JWT_SECRET!,
         PINATA_JWT: process.env.PINATA_JWT!,
       },

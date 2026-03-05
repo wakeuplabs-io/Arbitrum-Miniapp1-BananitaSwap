@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { parseSiweMessage } from "viem/siwe";
 import { eq, and, gt, or, lt } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db } from "../db/client.js";
-import { publicClient } from "../config/viem.js";
+import { getPublicClientForChainId } from "../config/viem.js";
 import { authNonce } from "../db/schema.js";
 import { signJwt } from "../lib/jwt.js";
 import type { AuthVariables } from "../middleware/auth.js";
-import { getNetworkConfig } from "../config/network.js";
 
 export const authRouter = new Hono<{ Variables: AuthVariables }>();
 
@@ -24,12 +24,27 @@ function cleanupExpiredNonces(): void {
     .catch((e) => console.error("[Auth] Nonce cleanup failed:", e));
 }
 
+const NONCE_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+/**
+ * Generates a 16-char alphanumeric nonce. Uses crypto for security.
+ * Shorter format improves Lemon miniapp SIWE compatibility vs 64-char hex.
+ */
+function generateNonce(): string {
+  const bytes = randomBytes(16);
+  let out = "";
+  for (let i = 0; i < 16; i++) {
+    out += NONCE_CHARS[bytes[i]! % NONCE_CHARS.length];
+  }
+  return out;
+}
+
 /**
  * POST /auth/nonce
  * Returns a unique nonce for SIWE (min 8 alphanumeric). Store in DB with expiry.
  */
 authRouter.post("/nonce", async (c) => {
-  const nonce = randomBytes(32).toString("hex");
+  const nonce = generateNonce();
   const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
   try {
     await db.insert(authNonce).values({
@@ -85,15 +100,31 @@ authRouter.post(
     }
 
     let valid: boolean;
-    console.log("body.message", body.message);
-    console.log("body.signature", body.signature);
-    console.log("body.wallet", body.wallet);
-    console.log("networkConfig", getNetworkConfig());
+    let chainId: number;
     try {
-      valid = await publicClient.verifySiweMessage({
+      const parsed = parseSiweMessage(body.message);
+      if (typeof parsed.chainId !== "number") {
+        return c.json({
+          verified: false,
+          error: "Invalid SIWE message: missing chain ID",
+        });
+      }
+      chainId = parsed.chainId;
+    } catch (e) {
+      console.error("[Auth] SIWE parse error:", e);
+      return c.json({
+        verified: false,
+        error: "Invalid SIWE message format",
+      });
+    }
+
+    try {
+      const client = getPublicClientForChainId(chainId);
+      valid = await client.verifySiweMessage({
         address: body.wallet as `0x${string}`,
         message: body.message,
         signature: body.signature as `0x${string}`,
+        blockTag: "latest", // Required for EIP-1271 smart contract wallet verification
       });
     } catch (e) {
       console.error("[Auth] SIWE verify error:", e);

@@ -16,7 +16,8 @@ const envSchema = z
     DATABASE_URL: z.string().url(),
     PORT: z.coerce.number().default(3000),
     NODE_ENV: z.enum(["development", "production", "staging"]).default("development"),
-    RPC_URL: z.string().url(),
+    MAINNET_RPC_URL: z.string().url(),
+    SEPOLIA_RPC_URL: z.string().url(),
     JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
     PINATA_JWT: z.string().min(1).optional(),
   })
