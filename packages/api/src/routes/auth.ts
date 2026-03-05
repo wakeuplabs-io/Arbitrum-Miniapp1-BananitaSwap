@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { arbitrum } from "viem/chains";
 import { hashMessage } from "viem";
 import { parseSiweMessage } from "viem/siwe";
 import { eq, and, gt, or, lt } from "drizzle-orm";
@@ -104,6 +103,7 @@ authRouter.post(
       });
     }
 
+    console.log("[Auth] Parsed SIWE message", parsed);
     const nonceFromMessage = parsed.nonce;
     if (typeof nonceFromMessage !== "string" || nonceFromMessage.length < 8) {
       return c.json({
@@ -148,8 +148,8 @@ authRouter.post(
       });
     }
 
-    const chainId = arbitrum.id; // Force Arbitrum mainnet for verification (ignore message chainId)
-    console.log("[Auth] Parsed SIWE message, original chainId:", parsed.chainId, "-> forcing", chainId);
+    const chainId = parsed.chainId;
+    console.log("[Auth] Parsed SIWE message, chainId:", chainId);
 
     let valid: boolean;
     try {
@@ -171,7 +171,6 @@ authRouter.post(
         address: body.wallet as `0x${string}`,
         message: body.message,
         signature: body.signature as `0x${string}`,
-        blockTag: "finalized", // Use finalized for consistency (was: latest)
       });
       console.log("[Auth] /verify: verifySiweMessage result =>", valid);
 
