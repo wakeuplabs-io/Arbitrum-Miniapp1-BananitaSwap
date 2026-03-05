@@ -174,7 +174,7 @@ export function TokenSelectModal({
 						</h3>
 					</div>
 
-					<div className="flex-1 overflow-y-auto px-4 pb-6 stagger-slide-up">
+					<div className="flex-1 overflow-y-auto px-4 pb-4 stagger-slide-up">
 						{isLoading ? (
 							<div className="flex items-center justify-center py-12">
 								<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -238,6 +238,10 @@ export function TokenSelectModal({
 							))
 						)}
 					</div>
+
+					<p className="px-4 pb-6 pt-2 text-center text-xs text-muted-foreground">
+						Trades are powered by Camelot and currently support Arbitrum tokens only.
+					</p>
 				</div>
 			</DialogContent>
 		</Dialog>

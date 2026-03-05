@@ -91,6 +91,9 @@ authRouter.post(
     });
 
     let valid: boolean;
+    console.log("body.message", body.message);
+    console.log("body.signature", body.signature);
+    console.log("body.wallet", body.wallet);
     try {
       valid = await publicClient.verifySiweMessage({
         address: body.wallet as `0x${string}`,

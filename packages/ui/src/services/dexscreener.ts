@@ -67,7 +67,7 @@ function filterArbitrumPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
 const ALLOWED_DEX_IDS = ['camelot']
 
 /**
- * Filter pairs to only include allowed DEXs (Uniswap or Camelot)
+ * Filter pairs to only include allowed DEXs (Camelot)
  */
 function filterAllowedDexs(pairs: DexScreenerPair[]): DexScreenerPair[] {
     return pairs.filter((pair) => {
