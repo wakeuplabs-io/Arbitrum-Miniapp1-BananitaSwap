@@ -85,16 +85,53 @@ authRouter.post(
     console.log("[Auth] Verify request body.message", body.message);
     console.log("[Auth] Verify request body.signature", body.signature);
 
+    let parsed: ReturnType<typeof parseSiweMessage>;
+    try {
+      parsed = parseSiweMessage(body.message);
+      if (typeof parsed.chainId !== "number") {
+        return c.json({
+          verified: false,
+          error: "Invalid SIWE message: missing chain ID",
+        });
+      }
+    } catch (e) {
+      console.error("[Auth] SIWE parse error:", e);
+      return c.json({
+        verified: false,
+        error: "Invalid SIWE message format",
+      });
+    }
+
+    const nonceFromMessage = parsed.nonce;
+    if (typeof nonceFromMessage !== "string" || nonceFromMessage.length < 8) {
+      return c.json({
+        verified: false,
+        error: "Invalid SIWE message: missing or invalid nonce",
+      });
+    }
+    if (body.nonce !== nonceFromMessage) {
+      console.warn(
+        "[Auth] nonce mismatch: body.nonce",
+        body.nonce,
+        "!= message nonce",
+        nonceFromMessage,
+        "- using message nonce for DB lookup"
+      );
+    }
+
     const rows = await db
       .select()
       .from(authNonce)
       .where(
-        and(eq(authNonce.nonce, body.nonce), gt(authNonce.expiresAt, new Date()))
+        and(
+          eq(authNonce.nonce, nonceFromMessage),
+          gt(authNonce.expiresAt, new Date())
+        )
       )
       .limit(1);
 
     if (rows.length === 0) {
-      console.log("[Auth] Verify failed: nonce not found or expired");
+      console.log("[Auth] Verify failed: nonce not found or expired =>", nonceFromMessage);
       return c.json({
         verified: false,
         error: "Nonce not found or expired",
@@ -109,26 +146,10 @@ authRouter.post(
       });
     }
 
-    let valid: boolean;
-    let chainId: number;
-    try {
-      const parsed = parseSiweMessage(body.message);
-      if (typeof parsed.chainId !== "number") {
-        return c.json({
-          verified: false,
-          error: "Invalid SIWE message: missing chain ID",
-        });
-      }
-      chainId = parsed.chainId;
-      console.log("[Auth] Parsed SIWE message, chainId:", chainId);
-    } catch (e) {
-      console.error("[Auth] SIWE parse error:", e);
-      return c.json({
-        verified: false,
-        error: "Invalid SIWE message format",
-      });
-    }
+    const chainId = parsed.chainId;
+    console.log("[Auth] Parsed SIWE message, chainId:", chainId);
 
+    let valid: boolean;
     try {
       const client = getPublicClientForChainId(chainId);
       console.log("[Auth] /verify: verifying SIWE on chain", chainId);
