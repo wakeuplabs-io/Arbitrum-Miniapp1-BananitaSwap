@@ -46,7 +46,9 @@ function generateNonce(): string {
 authRouter.post("/nonce", async (c) => {
   const nonce = generateNonce();
   const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
+
   console.log("[Auth] Nonce requested, generated:", nonce, "expiresAt:", expiresAt.toISOString());
+
   try {
     await db.insert(authNonce).values({
       nonce,
