@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { hashMessage } from "viem";
 import { parseSiweMessage } from "viem/siwe";
 import { eq, and, gt, or, lt } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
@@ -152,12 +153,24 @@ authRouter.post(
     let valid: boolean;
     try {
       const client = getPublicClientForChainId(chainId);
+      const hash = hashMessage(body.message);
+      console.log("[Auth] /verify: message hash", hash);
+
+      const code = await client.getCode({
+        address: body.wallet as `0x${string}`,
+        blockTag: "latest",
+      });
+      console.log("[Auth] /verify: wallet is contract:", code !== "0x", "code length:", code?.length ?? 0);
+
+      const isErc6492 = body.signature.endsWith("6492649264926492649264926492649264926492649264926492649264926492");
+      console.log("[Auth] /verify: signature looks like ERC-6492:", isErc6492);
+
       console.log("[Auth] /verify: verifying SIWE on chain", chainId);
       valid = await client.verifySiweMessage({
         address: body.wallet as `0x${string}`,
         message: body.message,
         signature: body.signature as `0x${string}`,
-        blockTag: "latest", // Required for EIP-1271 smart contract wallet verification
+        blockTag: "finalized", // Use finalized for consistency (was: latest)
       });
       console.log("[Auth] /verify: verifySiweMessage result =>", valid);
 
