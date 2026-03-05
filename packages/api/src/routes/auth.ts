@@ -3,11 +3,9 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, gt, or, lt } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
-import { createPublicClient, http } from "viem";
-import { arbitrum } from "viem/chains";
 import { db } from "../db/client.js";
+import { publicClient } from "../config/viem.js";
 import { authNonce } from "../db/schema.js";
-import { env } from "../config/env.js";
 import { signJwt } from "../lib/jwt.js";
 import type { AuthVariables } from "../middleware/auth.js";
 
@@ -84,11 +82,6 @@ authRouter.post(
         error: "Nonce already used",
       });
     }
-
-    const publicClient = createPublicClient({
-      chain: arbitrum,
-      transport: http(env.RPC_URL),
-    });
 
     let valid: boolean;
     console.log("body.message", body.message);
