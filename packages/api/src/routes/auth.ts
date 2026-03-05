@@ -8,6 +8,7 @@ import { publicClient } from "../config/viem.js";
 import { authNonce } from "../db/schema.js";
 import { signJwt } from "../lib/jwt.js";
 import type { AuthVariables } from "../middleware/auth.js";
+import { getNetworkConfig } from "../config/network.js";
 
 export const authRouter = new Hono<{ Variables: AuthVariables }>();
 
@@ -87,6 +88,7 @@ authRouter.post(
     console.log("body.message", body.message);
     console.log("body.signature", body.signature);
     console.log("body.wallet", body.wallet);
+    console.log("networkConfig", getNetworkConfig());
     try {
       valid = await publicClient.verifySiweMessage({
         address: body.wallet as `0x${string}`,
