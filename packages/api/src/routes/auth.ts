@@ -46,6 +46,7 @@ function generateNonce(): string {
 authRouter.post("/nonce", async (c) => {
   const nonce = generateNonce();
   const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
+  console.log("[Auth] Nonce requested, generated:", nonce, "expiresAt:", expiresAt.toISOString());
   try {
     await db.insert(authNonce).values({
       nonce,
@@ -57,6 +58,7 @@ authRouter.post("/nonce", async (c) => {
     return c.json({ error: "Failed to create nonce" }, 500);
   }
   cleanupExpiredNonces();
+  console.log("[Auth] Nonce created successfully");
   return c.json({ nonce });
 });
 
@@ -76,6 +78,10 @@ authRouter.post(
   zValidator("json", verifyBodySchema),
   async (c) => {
     const body = c.req.valid("json");
+    console.log("[Auth] Verify request body.wallet", body.wallet);
+    console.log("[Auth] Verify request body.nonce", body.nonce);
+    console.log("[Auth] Verify request body.message", body.message);
+    console.log("[Auth] Verify request body.signature", body.signature);
 
     const rows = await db
       .select()
@@ -86,6 +92,7 @@ authRouter.post(
       .limit(1);
 
     if (rows.length === 0) {
+      console.log("[Auth] Verify failed: nonce not found or expired");
       return c.json({
         verified: false,
         error: "Nonce not found or expired",
@@ -93,6 +100,7 @@ authRouter.post(
     }
     const row = rows[0];
     if (row.used) {
+      console.log("[Auth] Verify failed: nonce already used");
       return c.json({
         verified: false,
         error: "Nonce already used",
@@ -110,6 +118,7 @@ authRouter.post(
         });
       }
       chainId = parsed.chainId;
+      console.log("[Auth] Parsed SIWE message, chainId:", chainId);
     } catch (e) {
       console.error("[Auth] SIWE parse error:", e);
       return c.json({
@@ -120,6 +129,7 @@ authRouter.post(
 
     try {
       const client = getPublicClientForChainId(chainId);
+      console.log("[Auth] /verify: verifying SIWE on chain", chainId);
       valid = await client.verifySiweMessage({
         address: body.wallet as `0x${string}`,
         message: body.message,
@@ -135,11 +145,13 @@ authRouter.post(
     }
 
     if (!valid) {
+      console.log("[Auth] /verify: invalid signature");
       return c.json({
         verified: false,
         error: "Invalid signature",
       });
     }
+    console.log("[Auth] /verify: signature valid, issuing JWT for", body.wallet);
 
     try {
       await db.update(authNonce).set({ used: true }).where(eq(authNonce.id, row.id));
@@ -156,6 +168,7 @@ authRouter.post(
       console.error("[Auth] JWT sign failed:", e);
       return c.json({ verified: false, error: "Server error" }, 500);
     }
+    console.log("[Auth] /verify: success");
     return c.json({ verified: true, token });
   }
 );
