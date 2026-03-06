@@ -6,8 +6,6 @@ import { NumericKeypad } from '@/components/swap/numeric-keypad'
 import { SwipeButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { useMockTokenState } from '@/contexts/mock-token-state'
-import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
-import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { TokenName } from '@lemoncash/mini-app-sdk'
 
@@ -21,9 +19,6 @@ export function DepositModal({ onClose }: DepositModalProps) {
     const [showLemonRequested, setShowLemonRequested] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const { portfolioChain } = usePortfolioChain()
-    const { getTotalBalanceUsd } = useUserHoldings(portfolioChain)
-    const balanceUsd = getTotalBalanceUsd()
     const { isMocking, deposit: mockDeposit } = useMockTokenState()
     const { handleDeposit, isInLemonWebView } = useLemonMiniapp()
 
@@ -163,12 +158,6 @@ export function DepositModal({ onClose }: DepositModalProps) {
                             Processing deposit...
                         </p>
                     )}
-                    <p className="text-sm text-muted-foreground text-center mt-1">
-                        Current balance:
-                        <span className="font-semibold text-foreground numeric">
-                            ${balanceUsd.toFixed(2)} USDC
-                        </span>
-                    </p>
                 </div>
 
                 <div className="flex items-center justify-center gap-2 px-4 pb-4 flex-wrap">
