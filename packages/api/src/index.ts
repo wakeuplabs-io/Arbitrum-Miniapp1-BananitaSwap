@@ -21,7 +21,7 @@ app.route("/users", usersRouter);
 export const handler = handle(app);
 
 // Start server if development
-if (process.env.NODE_ENV === "development") {
+if (env.NODE_ENV === "development") {
   const port = env.PORT;
 
   serve(
