@@ -111,13 +111,13 @@ export function TokenControlPanel() {
 
                     {/* Content - scrollable */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {/* Portfolio view chain (Sepolia vs Mainnet) */}
+                        {/* Portfolio chain (used by mock to sync holdings) */}
                         <div>
                             <h4 className="text-xs font-display font-semibold uppercase tracking-wide text-foreground mb-2">
-                                Portfolio view
+                                Portfolio chain
                             </h4>
                             <p className="text-[10px] text-muted-foreground mb-2">
-                                Which chain to load balances from on the portfolio screen.
+                                Chain used for portfolio, mock sync, withdraw, and deposit.
                             </p>
                             <div className="flex rounded-full border border-border bg-muted/50 p-0.5 w-fit">
                                 <Button

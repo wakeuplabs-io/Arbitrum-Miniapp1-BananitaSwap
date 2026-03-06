@@ -4,6 +4,7 @@ import { useMockTokenState } from '@/contexts/mock-token-state'
 import {
     ARBITRUM_MAINNET_USDC_ADDRESS,
     ARBITRUM_SEPOLIA_USDC_ADDRESS,
+    getPortfolioChainFromEnv,
 } from '@/shared/config/network'
 import type { PortfolioChain } from '@/shared/config/network'
 import { useOwnedTokens } from './use-owned-tokens'
@@ -13,10 +14,11 @@ export type TokenHolding = { token: Token; amount: number }
 
 /**
  * Internal hook to retrieve raw user holdings from owned tokens
- * @param chain - Which chain the balances are from (portfolio view). Default mainnet.
+ * @param chain - Which chain the balances are from. If omitted, inferred from NETWORK_BY_ENV.
  */
-function useRawUserHoldings(chain: PortfolioChain = 'mainnet') {
-    const { data: ownedTokensData, isLoading } = useOwnedTokens(chain)
+function useRawUserHoldings(chain?: PortfolioChain) {
+    const resolvedChain = chain ?? getPortfolioChainFromEnv()
+    const { data: ownedTokensData, isLoading } = useOwnedTokens(resolvedChain)
 
     const holdings = useMemo(() => {
         if (!ownedTokensData || !ownedTokensData.tokens || !ownedTokensData.balances) {
@@ -24,9 +26,9 @@ function useRawUserHoldings(chain: PortfolioChain = 'mainnet') {
         }
 
         const holdings: TokenHolding[] = []
-        const usdcToken = getUsdcTokenForChain(chain)
+        const usdcToken = getUsdcTokenForChain(resolvedChain)
         const usdcAddressForLookup =
-            chain === 'mainnet'
+            resolvedChain === 'mainnet'
                 ? ARBITRUM_MAINNET_USDC_ADDRESS.toLowerCase()
                 : ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
 
@@ -56,16 +58,16 @@ function useRawUserHoldings(chain: PortfolioChain = 'mainnet') {
         }
 
         return holdings
-    }, [ownedTokensData, chain])
+    }, [ownedTokensData, resolvedChain])
 
     return { holdings, isLoading }
 }
 
 /**
  * Hook to get current holdings (mock or user holdings)
- * @param chain - Which chain to show (portfolio only). Omit for default (mainnet); pass from usePortfolioChain() on portfolio screen.
+ * @param chain - Use 'mainnet' for DexScreener context (token listing, swap). Use 'sepolia' for portfolio (withdraw, deposit, view tokens). Omit to infer from NETWORK_BY_ENV.
  */
-export function useUserHoldings(chain: PortfolioChain = 'mainnet') {
+export function useUserHoldings(chain?: PortfolioChain) {
     const { holdings: rawUserHoldings, isLoading: isLoadingOwnedTokens } = useRawUserHoldings(chain)
     let mockHoldings: TokenHolding[] | null = null
     try {

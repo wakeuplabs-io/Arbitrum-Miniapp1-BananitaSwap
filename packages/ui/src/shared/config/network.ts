@@ -35,6 +35,12 @@ const NETWORK_BY_ENV: Record<string, NetworkConfig> = {
   production: arbitrumMainnetConfig,
 };
 
+/** Portfolio chain inferred from NETWORK_BY_ENV (development/staging → sepolia, production → mainnet) */
+export function getPortfolioChainFromEnv(): PortfolioChain {
+  const { chain } = NETWORK_BY_ENV[envParsed.NODE_ENV] ?? arbitrumSepoliaConfig
+  return chain.id === arbitrum.id ? 'mainnet' : 'sepolia'
+}
+
 /** App chain: Sepolia for dev/staging (Lemon miniapp), mainnet for production */
 export const getNetworkConfig = (): NetworkConfig => {
   const { RPC_URL_SEPOLIA: RPC_URL, NODE_ENV } = envParsed;

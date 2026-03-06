@@ -30,7 +30,7 @@ export function SwapScreen({
 }: SwapScreenProps) {
 	const navigate = useNavigate()
 	const usdc = getUsdcToken()
-	const { getUsdcBalance, getTokenBalance } = useUserHoldings()
+	const { getUsdcBalance, getTokenBalance } = useUserHoldings('mainnet')
 	const { isMocking, swap: mockSwap } = useMockTokenState()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)

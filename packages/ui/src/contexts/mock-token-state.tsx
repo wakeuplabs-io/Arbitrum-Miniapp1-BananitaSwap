@@ -32,16 +32,15 @@ export function MockTokenStateProvider({ children }: { children: ReactNode }) {
     const { wallet } = useLemonMiniapp()
     const { data: ownedTokensData, isLoading: isLoadingOwnedTokens } = useOwnedTokens(portfolioChain)
     const lastWalletRef = useRef<string | undefined>(undefined)
-    const lastChainRef = useRef<typeof portfolioChain>(portfolioChain)
+    const lastChainRef = useRef(portfolioChain)
 
-    // When wallet address is set and holdings are loaded, copy them to mock holdings (using selected portfolio chain)
+    // When wallet address is set and holdings are loaded, copy them to mock holdings (using chain from control panel)
     useEffect(() => {
         const hasValidWallet = wallet && wallet !== 'undefined' && wallet.trim() !== ''
         const walletChanged = wallet !== lastWalletRef.current
         const chainChanged = portfolioChain !== lastChainRef.current
 
         if (hasValidWallet && !isLoadingOwnedTokens && ownedTokensData) {
-            // Sync when wallet or portfolio chain changed (so Sepolia/Mainnet switch refetches and shows correct USDC)
             if (walletChanged || chainChanged) {
                 const holdings: TokenHolding[] = []
                 const usdcToken = getUsdcTokenForChain(portfolioChain)

@@ -99,7 +99,7 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
             if (result.result === TransactionResult.SUCCESS) {
                 const { wallet: walletAddress, signature, message, grantedClaims } = result.data
                 console.log("grantedClaims", grantedClaims)
-                console.log("result", result);
+                addAuthLog(`result.data: ${result.data}`);
                 addAuthLog('handleAuthentication: verifying signature on backend')
                 const verification = await verifySignature({
                     wallet: walletAddress,

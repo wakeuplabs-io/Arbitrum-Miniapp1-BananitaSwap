@@ -68,7 +68,7 @@ function useBuyModeTokens(query: string, excludeSymbol?: string) {
  * Hook for sell mode token selection
  */
 function useSellModeTokens(query: string, excludeSymbol?: string) {
-	const { holdings, isLoading } = useUserHoldings()
+	const { holdings, isLoading } = useUserHoldings('mainnet')
 
 	// Extract tokens from holdings (which include mock tokens)
 	const tokens = useMemo(() => {

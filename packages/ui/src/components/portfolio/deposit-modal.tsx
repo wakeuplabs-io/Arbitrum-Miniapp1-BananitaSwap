@@ -6,6 +6,7 @@ import { NumericKeypad } from '@/components/swap/numeric-keypad'
 import { SwipeButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { useMockTokenState } from '@/contexts/mock-token-state'
+import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { TokenName } from '@lemoncash/mini-app-sdk'
@@ -20,7 +21,8 @@ export function DepositModal({ onClose }: DepositModalProps) {
     const [showLemonRequested, setShowLemonRequested] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const { getTotalBalanceUsd } = useUserHoldings()
+    const { portfolioChain } = usePortfolioChain()
+    const { getTotalBalanceUsd } = useUserHoldings(portfolioChain)
     const balanceUsd = getTotalBalanceUsd()
     const { isMocking, deposit: mockDeposit } = useMockTokenState()
     const { handleDeposit, isInLemonWebView } = useLemonMiniapp()
