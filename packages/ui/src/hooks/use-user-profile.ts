@@ -59,3 +59,5 @@ export function useUserProfile() {
 		clearAvatar,
 	}
 }
+
+export type UserProfile = ReturnType<typeof useUserProfile>

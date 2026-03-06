@@ -4,7 +4,6 @@ type TokensEmptyStateProps = {
 	onBuyNow: () => void
 }
 
-
 export function TokensEmptyState({ onBuyNow }: TokensEmptyStateProps) {
 	return (
 		<div
@@ -13,7 +12,6 @@ export function TokensEmptyState({ onBuyNow }: TokensEmptyStateProps) {
 				boxShadow: '0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
 			}}
 		>
-			{/* B) Monkey illustration */}
 			<div
 				className="float-gentle w-full max-w-[260px] sm:max-w-[300px] mx-auto mb-8 flex justify-center"
 				aria-hidden
@@ -25,17 +23,14 @@ export function TokensEmptyState({ onBuyNow }: TokensEmptyStateProps) {
 				/>
 			</div>
 
-			{/* C) Primary message */}
 			<p className="text-base font-display font-semibold text-foreground mb-2">
 				No tokens yet
 			</p>
 
-			{/* D) Secondary message */}
 			<p className="text-sm text-muted-foreground mb-8 max-w-[240px]">
 				Deposit USDC and swap to buy your first token
 			</p>
 
-			{/* E) CTA button - gradient yellow → orange, pill, strong shadow */}
 			<Button
 				type="button"
 				variant="default"
