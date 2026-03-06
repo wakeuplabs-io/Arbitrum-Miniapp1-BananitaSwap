@@ -72,7 +72,7 @@ export default $config({
     const api = new sst.aws.ApiGatewayV2("gateway", {
       domain: API_DOMAIN_URL,
       cors: {
-        allowOrigins: allowedOrigins,
+        allowOrigins: $app.stage === "production" ? allowedOrigins : ["*"],
         allowMethods: [
           "GET",
           "POST",
