@@ -62,11 +62,16 @@ export function TokenListItem({ holding, onBuyToken, onSellToken }: TokenListIte
 				</span>
 				<span
 					className={`text-xs numeric ${
-						holding.token.change24h >= 0 ? 'text-success' : 'text-destructive'
+						holding.token.change24h == null
+							? 'text-muted-foreground'
+							: holding.token.change24h >= 0
+								? 'text-success'
+								: 'text-destructive'
 					}`}
 				>
-					{holding.token.change24h >= 0 ? '+' : ''}
-					{holding.token.change24h.toFixed(3)}%
+					{holding.token.change24h == null
+						? '-'
+						: `${holding.token.change24h >= 0 ? '+' : ''}${holding.token.change24h.toFixed(3)}%`}
 				</span>
 			</div>
 

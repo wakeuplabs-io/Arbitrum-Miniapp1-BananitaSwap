@@ -7,6 +7,7 @@ export type AuthLogEntry = { id: number; time: string; message: string }
 
 type LemonMiniappContextType = {
     wallet: string | undefined
+    lemonTag: string | undefined
     authToken: string | undefined
     isAuthenticated: boolean
     isInLemonWebView: boolean
@@ -28,6 +29,7 @@ function now() {
 
 export function LemonMiniappProvider({ children }: { children: ReactNode }) {
     const [wallet, setWallet] = useState<string | undefined>(undefined)
+    const [lemonTag, setLemonTag] = useState<string | undefined>(undefined)
     const [authToken, setAuthToken] = useState<string | undefined>(undefined)
     const [isAuthenticating, setIsAuthenticating] = useState(false)
     const [isInLemonWebView, setIsInLemonWebView] = useState(false)
@@ -43,10 +45,14 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
         setAuthLogs([])
     }, [])
 
-    const setWalletAndToken = useCallback((address: string | undefined, token?: string) => {
-        setWallet(address)
-        setAuthToken(address ? token ?? undefined : undefined)
-    }, [])
+    const setWalletAndToken = useCallback(
+        (address: string | undefined, token?: string, lemonTagValue?: string) => {
+            setWallet(address)
+            setAuthToken(address ? token ?? undefined : undefined)
+            setLemonTag(lemonTagValue ?? undefined)
+        },
+        []
+    )
 
     const getAuthHeaders = useCallback((): Record<string, string> => {
         if (!authToken) return {}
@@ -98,8 +104,11 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
 
             if (result.result === TransactionResult.SUCCESS) {
                 const { wallet: walletAddress, signature, message, grantedClaims } = result.data
-                console.log("grantedClaims", grantedClaims)
-                addAuthLog(`result.data: ${result.data}`);
+                const lemonTagValue = Array.isArray(grantedClaims)
+                    ? grantedClaims.find((c: { key: string; value: string }) => c.key === ClaimKey.LEMONTAG)
+                        ?.value
+                    : undefined
+                addAuthLog(`result.data: ${result.data}`)
                 addAuthLog('handleAuthentication: verifying signature on backend')
                 const verification = await verifySignature({
                     wallet: walletAddress,
@@ -108,14 +117,14 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
                     nonce,
                 })
                 if (verification.verified) {
-                    setWalletAndToken(walletAddress, verification.token)
+                    setWalletAndToken(walletAddress, verification.token, lemonTagValue)
                     addAuthLog(`handleAuthentication: verified, wallet set => ${walletAddress.slice(0, 10)}...`)
                 } else {
                     const verifyUnavailable =
                         verification.error?.includes('404') ||
                         verification.error?.toLowerCase().includes('failed to fetch')
                     if (verifyUnavailable) {
-                        setWalletAndToken(walletAddress)
+                        setWalletAndToken(walletAddress, undefined, lemonTagValue)
                         addAuthLog('handleAuthentication: verify endpoint unavailable, wallet set (dev fallback)')
                     } else {
                         addAuthLog(`handleAuthentication: verification failed => ${verification.error ?? 'unknown'}`)
@@ -182,6 +191,7 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
 
     const value: LemonMiniappContextType = {
         wallet,
+        lemonTag,
         authToken,
         isAuthenticated: !!wallet,
         isInLemonWebView,
@@ -189,7 +199,7 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
         handleDeposit,
         handleWithdraw,
         isAuthenticating,
-        setWallet: (address) => setWalletAndToken(address),
+        setWallet: (address) => setWalletAndToken(address, undefined, undefined),
         authLogs,
         clearAuthLogs,
         getAuthHeaders,

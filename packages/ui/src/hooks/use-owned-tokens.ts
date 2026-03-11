@@ -9,7 +9,8 @@ import {
 } from '@/shared/config/network'
 import type { PortfolioChain } from '@/shared/config/network'
 import { getTokenPairsForAddresses, getTokensInfo } from '@/services/dexscreener'
-import { getUsdcTokenForChain, pairToTokenFromTokenPairs } from '@/hooks/use-tokens'
+import { apiTokenItemToToken, getUsdcTokenForChain, pairToTokenFromTokenPairs } from '@/hooks/use-tokens'
+import { fetchTokens } from '@/services/tokens-api'
 import type { Token } from '@/lib/tokens'
 
 const SEPOLIA_USDC_LOWER = ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
@@ -30,14 +31,9 @@ type OwnedTokensResult = {
 
 /**
  * Hook to get tokens owned by an address by analyzing Transfer events
- * and checking current balances. Also fetches token details from DexScreener.
+ * and checking current balances. Uses tokens list from API as primary source;
+ * DexScreener fallback only for tokens not in the API list.
  * @param chain - Which chain to fetch from (portfolio only). Omit or use default for mainnet when outside portfolio.
- * Uses optimized strategies:
- * - Indexed event parameters for RPC-level filtering
- * - Single RPC call to fetch all transfers
- * - In-memory deduplication to track latest transfer per token
- * - Multicall for balance + decimals (2 RPC calls per batch instead of 1–2 per token)
- * - Fetches token metadata from DexScreener API (mainnet only)
  */
 export function useOwnedTokens(chain: PortfolioChain = 'mainnet') {
     const { wallet } = useLemonMiniapp()
@@ -138,40 +134,54 @@ export function useOwnedTokens(chain: PortfolioChain = 'mainnet') {
                     balanceMap.set(address, balance)
                 }
 
-                // Fetch token details from DexScreener for tokens with balance > 0
+                // Use tokens list from API as primary source; DexScreener fallback for tokens not in list
                 const ownedTokenAddresses = Array.from(balanceMap.keys())
-                // DexScreener is mainnet-only: map Sepolia USDC to mainnet USDC so pairs are found
-                const addressesForDexScreener = ownedTokenAddresses.map((addr) =>
-                    addr === SEPOLIA_USDC_LOWER ? MAINNET_USDC_LOWER : addr
-                )
-                const uniqueAddressesForDexScreener = [...new Set(addressesForDexScreener)]
-                const pairs = await getTokenPairsForAddresses(uniqueAddressesForDexScreener)
-
-                // Convert pairs to tokens, deduplicate by address
                 const tokensByAddress = new Map<string, Token>()
-                for (const pair of pairs) {
-                    const token = pairToTokenFromTokenPairs(pair)
-                    const address = token.address?.toLowerCase()
-                    if (!address) continue
-                    const hasBalance = balanceMap.has(address)
-                    const isMainnetUsdc = address === MAINNET_USDC_LOWER
-                    const hasSepoliaUsdcBalance = balanceMap.has(SEPOLIA_USDC_LOWER)
-                    if (hasBalance || (isMainnetUsdc && hasSepoliaUsdcBalance)) {
-                        const existing = tokensByAddress.get(address)
-                        const liquidityValue = pair.liquidity?.usd
-                        const liquidity = typeof liquidityValue === 'string'
-                            ? parseFloat(liquidityValue)
-                            : liquidityValue || 0
-                        const existingLiquidity = existing?.price || 0
 
-                        if (!existing || liquidity > existingLiquidity) {
-                            tokensByAddress.set(address, token)
-                        }
+                const { tokens: apiTokens } = await fetchTokens()
+                const apiTokenByAddress = new Map(
+                    apiTokens.map((t) => [t.otherToken.address.toLowerCase(), t])
+                )
+
+                for (const address of ownedTokenAddresses) {
+                    const lookupAddress = address === SEPOLIA_USDC_LOWER ? MAINNET_USDC_LOWER : address
+                    const apiToken = apiTokenByAddress.get(lookupAddress)
+                    if (apiToken) {
+                        tokensByAddress.set(address, apiTokenItemToToken(apiToken))
                     }
                 }
 
-                // DexScreener pairs only give us the "other" token (quoteToken), never USDC. So inject USDC token
-                // when user has USDC balance so it appears in the list (for both Sepolia and mainnet).
+                // Fallback to DexScreener for tokens not in our API list
+                const addressesNotInApi = ownedTokenAddresses.filter(
+                    (addr) =>
+                        addr !== SEPOLIA_USDC_LOWER &&
+                        addr !== MAINNET_USDC_LOWER &&
+                        !apiTokenByAddress.has(addr)
+                )
+                const uniqueNotInApi = [...new Set(addressesNotInApi)]
+                if (uniqueNotInApi.length > 0) {
+                    const pairs = await getTokenPairsForAddresses(uniqueNotInApi)
+                    const bestPairByAddr = new Map<string, { pair: (typeof pairs)[0]; liquidity: number }>()
+                    for (const pair of pairs) {
+                        const addr = pair.quoteToken?.address?.toLowerCase()
+                        if (!addr || !balanceMap.has(addr)) continue
+                        const liquidity =
+                            typeof pair.liquidity?.usd === 'string'
+                                ? parseFloat(pair.liquidity.usd)
+                                : pair.liquidity?.usd || 0
+                        const existing = bestPairByAddr.get(addr)
+                        if (!existing || liquidity > existing.liquidity) {
+                            bestPairByAddr.set(addr, { pair, liquidity })
+                        }
+                    }
+                    for (const { pair } of bestPairByAddr.values()) {
+                        const token = pairToTokenFromTokenPairs(pair)
+                        const addr = token.address?.toLowerCase()
+                        if (addr) tokensByAddress.set(addr, token)
+                    }
+                }
+
+                // Inject USDC when user has balance
                 if (balanceMap.has(SEPOLIA_USDC_LOWER)) {
                     tokensByAddress.set(SEPOLIA_USDC_LOWER, getUsdcTokenForChain('sepolia'))
                 }
@@ -179,25 +189,25 @@ export function useOwnedTokens(chain: PortfolioChain = 'mainnet') {
                     tokensByAddress.set(MAINNET_USDC_LOWER, getUsdcTokenForChain('mainnet'))
                 }
 
-                // Also fetch price info using getTokensInfo for better price data (mainnet addresses only for DexScreener)
-                if (uniqueAddressesForDexScreener.length > 0) {
+                // Enrich with 24h price change from DexScreener (mainnet only)
+                const addressesForChange24h = Array.from(tokensByAddress.keys()).map((a) =>
+                    a === SEPOLIA_USDC_LOWER ? MAINNET_USDC_LOWER : a
+                )
+                const uniqueForChange24h = [...new Set(addressesForChange24h)]
+                if (uniqueForChange24h.length > 0) {
                     try {
-                        const tokenInfos = await getTokensInfo(uniqueAddressesForDexScreener)
-                        const tokenInfosMap = new Map(
-                            tokenInfos.map((info) => [info.address.toLowerCase(), info])
-                        )
-
-                        // Update tokens with price info
-                        for (const [address, token] of tokensByAddress) {
-                            const lookupAddress = address === SEPOLIA_USDC_LOWER ? MAINNET_USDC_LOWER : address
-                            const tokenInfo = tokenInfosMap.get(lookupAddress)
-                            if (tokenInfo) {
-                                token.price = tokenInfo.priceUsd
-                                token.change24h = tokenInfo.priceChange24h
+                        const infos = await getTokensInfo(uniqueForChange24h)
+                        for (const info of infos) {
+                            const addr = info.address.toLowerCase()
+                            const token = tokensByAddress.get(addr)
+                            if (token) token.change24h = info.priceChange24h
+                            if (addr === MAINNET_USDC_LOWER) {
+                                const sepToken = tokensByAddress.get(SEPOLIA_USDC_LOWER)
+                                if (sepToken) sepToken.change24h = info.priceChange24h
                             }
                         }
                     } catch (error) {
-                        console.error('Failed to fetch token price info:', error)
+                        console.warn('Failed to fetch 24h change for portfolio:', error)
                     }
                 }
 
@@ -235,7 +245,7 @@ export function useOwnedTokenAddresses() {
 }
 
 /**
- * Hook to get owned tokens with full metadata from DexScreener
+ * Hook to get owned tokens with full metadata
  * Returns an array of Token objects for tokens the user owns
  */
 export function useOwnedTokenList() {

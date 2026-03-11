@@ -7,7 +7,7 @@ export type Token = {
 	logoUrl?: string
 	color: string
 	price: number
-	change24h: number
+	change24h: number | undefined // undefined = no 24h data (show "-")
 	marketCap: string
 	balance?: number
 	address?: string
