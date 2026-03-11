@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TokenIcon } from '@/components/swap/token-icon'
 import type { Token } from '@/lib/tokens'
+import { formatPrice } from '@/lib/utils'
 
 type Holding = {
 	token: Token
@@ -47,7 +48,7 @@ export function CurrentHoldingsList({
 									{holding.token.symbol}
 								</p>
 								<p className="text-[10px] text-muted-foreground">
-									${holding.token.price.toFixed(2)}
+									{formatPrice(holding.token.price)}
 								</p>
 							</div>
 							<Input

@@ -36,7 +36,8 @@ export function PortfolioScreen({
 	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
 		useUserHoldings(portfolioChain)
 	const profile = useUserProfile()
-	const { wallet, isAuthenticated, isInLemonWebView, isAuthenticating, authLogs, clearAuthLogs } = useLemonMiniapp()
+	const { wallet, lemonTag, isAuthenticated, isInLemonWebView, isAuthenticating, authLogs, clearAuthLogs } =
+		useLemonMiniapp()
 
 	const actions = [
 		{ ...ACTIONS[0], onClick: onOpenDeposit },
@@ -48,6 +49,7 @@ export function PortfolioScreen({
 		<div className="flex flex-col h-full overflow-y-auto pb-20">
 			<PortfolioHeader
 				wallet={wallet}
+				lemonTag={lemonTag}
 				balanceUsd={balanceUsd}
 				dailyChangePercent={dailyChangePercent}
 				profile={profile}

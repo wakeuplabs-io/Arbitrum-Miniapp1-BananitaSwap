@@ -5,6 +5,7 @@ import type { UserProfile } from '@/hooks/use-user-profile'
 
 type PortfolioHeaderProps = {
 	wallet: string | undefined
+	lemonTag?: string | undefined
 	balanceUsd: number
 	dailyChangePercent: number
 	profile: UserProfile
@@ -18,6 +19,7 @@ function formatAddress(address: string) {
 
 export function PortfolioHeader({
 	wallet,
+	lemonTag,
 	balanceUsd,
 	dailyChangePercent,
 	profile,
@@ -123,18 +125,23 @@ export function PortfolioHeader({
 				<p className="text-xs text-destructive text-center max-w-[240px]">{avatarError}</p>
 			)}
 			{wallet && (
-				<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border">
-					<span className="text-xs font-mono text-muted-foreground">{formatAddress(wallet)}</span>
-					<Button
-						type="button"
-						variant="ghost"
-						size="xs"
-						onClick={handleCopyAddress}
-						className="h-6 w-6 p-0 rounded-full hover:bg-muted"
-						aria-label="Copy wallet address"
-					>
-						{copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
-					</Button>
+				<div className="flex flex-col items-center gap-1">
+					<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border">
+						<span className="text-xs font-mono text-muted-foreground">{formatAddress(wallet)}</span>
+						<Button
+							type="button"
+							variant="ghost"
+							size="xs"
+							onClick={handleCopyAddress}
+							className="h-6 w-6 p-0 rounded-full hover:bg-muted"
+							aria-label="Copy wallet address"
+						>
+							{copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+						</Button>
+					</div>
+					{lemonTag && (
+						<span className="text-xs text-muted-foreground">@{lemonTag}</span>
+					)}
 				</div>
 			)}
 			<div className="flex flex-col items-center gap-0.5">
