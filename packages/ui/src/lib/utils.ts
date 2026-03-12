@@ -38,3 +38,17 @@ export function formatPrice(price: number): string {
 	const subscript = toSubscript(leadingZeros)
 	return `$0.0${subscript}${sig}`
 }
+
+/**
+ * Format token amount for compact display (e.g. in portfolio list).
+ * Truncates to avoid long decimal strings like "0.001671329823159021".
+ */
+export function formatTokenAmount(amount: number): string {
+	if (!Number.isFinite(amount) || amount <= 0) return '0'
+	if (amount >= 1000) return amount.toLocaleString('en-US', { maximumFractionDigits: 2 })
+	if (amount >= 1) return amount.toFixed(3)
+	if (amount >= 0.01) return amount.toFixed(4)
+	if (amount >= 0.0001) return amount.toFixed(5)
+	if (amount >= 0.00001) return amount.toFixed(6)
+	return amount.toExponential(2)
+}

@@ -70,8 +70,8 @@ function PortfolioPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background max-w-[430px] mx-auto relative overflow-hidden">
-      <div className="h-[calc(100dvh-64px)]">
+    <main className="min-h-screen bg-background max-w-[430px] relative overflow-hidden">
+      <div className="h-[calc(100dvh-64px)] overflow-x-hidden">
         <PortfolioScreen
           onOpenDeposit={handleOpenDeposit}
           onOpenWithdraw={handleOpenWithdraw}
