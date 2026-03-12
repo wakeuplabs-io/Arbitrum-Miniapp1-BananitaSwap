@@ -111,13 +111,16 @@ export function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
     }
 }
 
+/** Shared query key for tokens API – used by useAllTokens and useOwnedTokens. */
+export const TOKENS_QUERY_KEY = ['tokens'] as const
+
 /**
  * Hook to fetch USDC-paired tokens from backend (/tokens API).
  * Shows tokens immediately from API; fetches 24h change from DexScreener in background (non-blocking).
  */
 export function useAllTokens() {
     const tokensQuery = useQuery({
-        queryKey: ['tokens'],
+        queryKey: TOKENS_QUERY_KEY,
         queryFn: async () => {
             const res = await fetchTokens()
             return { tokens: res.tokens, tokenAddresses: res.tokenAddresses }

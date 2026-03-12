@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { TokenIcon } from '@/components/swap/token-icon'
+import { formatPrice, formatTokenAmount } from '@/lib/utils'
 import type { Token } from '@/lib/tokens'
 
 type Holding = {
@@ -38,27 +39,27 @@ export function TokenListItem({ holding, onBuyToken, onSellToken }: TokenListIte
 			tabIndex={0}
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
-			className="flex items-center gap-4 py-4 px-4 rounded-3xl bg-card border-2 border-border w-full text-left cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tap-scale transition-transform"
+			className="flex items-center gap-2 sm:gap-4 py-3 sm:py-4 px-3 sm:px-4 rounded-3xl bg-card border-2 border-border w-full min-w-0 text-left cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tap-scale transition-transform"
 		>
 			<TokenIcon
 				symbol={holding.token.symbol}
 				color={holding.token.color}
 				logoUrl={holding.token.logoUrl}
-				size={40}
+				size={36}
 			/>
 
-			<div className="flex flex-col min-w-0 flex-1 gap-1">
-				<span className="text-sm font-display font-semibold text-foreground truncate">
+			<div className="flex flex-col min-w-0 flex-1 gap-1 overflow-hidden">
+				<span className="text-sm font-display font-semibold text-foreground truncate block min-w-0">
 					{holding.token.name}
 				</span>
-				<span className="text-xs numeric text-muted-foreground">
-					{holding.amount} {holding.token.symbol}
+				<span className="text-xs numeric text-muted-foreground truncate block min-w-0">
+					{formatTokenAmount(holding.amount)} {holding.token.symbol}
 				</span>
 			</div>
 
-			<div className="flex flex-col items-end shrink-0 mr-1 gap-1">
+			<div className="flex flex-col items-end shrink-0 gap-1">
 				<span className="text-sm numeric font-bold text-foreground text-price">
-					${usdValue < 0.01 ? '<0.01' : usdValue.toFixed(2)}
+					{formatPrice(usdValue)}
 				</span>
 				<span
 					className={`text-xs numeric ${
@@ -75,7 +76,7 @@ export function TokenListItem({ holding, onBuyToken, onSellToken }: TokenListIte
 				</span>
 			</div>
 
-			<div className="flex flex-col gap-1.5 shrink-0">
+			<div className="flex flex-col gap-1 shrink-0">
 				<Button
 					type="button"
 					variant="success"
@@ -84,7 +85,7 @@ export function TokenListItem({ holding, onBuyToken, onSellToken }: TokenListIte
 						e.stopPropagation()
 						onBuyToken(holding.token)
 					}}
-					className="rounded-full min-h-[32px]"
+					className="rounded-full min-h-[28px] h-7 px-2.5 text-xs"
 				>
 					Buy
 				</Button>
@@ -96,7 +97,7 @@ export function TokenListItem({ holding, onBuyToken, onSellToken }: TokenListIte
 						e.stopPropagation()
 						onSellToken(holding.token)
 					}}
-					className="rounded-full min-h-[32px]"
+					className="rounded-full min-h-[28px] h-7 px-2.5 text-xs"
 				>
 					Sell
 				</Button>
