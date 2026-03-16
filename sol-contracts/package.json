@@ -1,0 +1,36 @@
+{
+  "name": "sol-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.js --network arbitrumSepolia",
+    "deploy:arbitrum-one": "hardhat run scripts/deploy.js --network arbitrumOne",
+    "swap": "hardhat run scripts/swap.js",
+    "swap:arbitrum-sepolia": "hardhat run scripts/swap.js --network arbitrumSepolia",
+    "swap:arbitrum-one": "hardhat run scripts/swap.js --network arbitrumOne",
+    "swap-via-router": "hardhat run scripts/swap-via-router.js",
+    "swap-via-router:arbitrum-sepolia": "hardhat run scripts/swap-via-router.js --network arbitrumSepolia",
+    "swap-via-router:arbitrum-one": "hardhat run scripts/swap-via-router.js --network arbitrumOne",
+    "set-provider:arbitrum-sepolia": "hardhat run scripts/set-provider.js --network arbitrumSepolia",
+    "set-provider:arbitrum-one": "hardhat run scripts/set-provider.js --network arbitrumOne",
+    "set-uniswap-provider:arbitrum-sepolia": "hardhat run scripts/set-uniswap-provider.js --network arbitrumSepolia",
+    "set-uniswap-provider:arbitrum-one": "hardhat run scripts/set-uniswap-provider.js --network arbitrumOne",
+    "verify": "hardhat run scripts/verify.js",
+    "verify:arbitrum-sepolia": "hardhat run scripts/verify.js --network arbitrumSepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "3.0.7",
+    "@nomicfoundation/hardhat-verify": "^2.0.11",
+    "chai": "4.5.0",
+    "ethers": "6.13.4",
+    "hardhat": "2.19.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "dotenv": "16.4.5"
+  }
+}
