@@ -45,3 +45,8 @@ packages/ui/cache
 
 # DEX aggregator UI mockup (V0 reference, not part of main app)
 dex-aggregator-ui/
+artifacts
+cache
+/packages/rust-contracts/target
+
+/packages/contracts/target
