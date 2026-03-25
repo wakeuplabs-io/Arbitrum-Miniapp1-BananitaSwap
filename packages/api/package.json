@@ -8,12 +8,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "drizzle-kit generate && esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js",
     "start": "node dist/index.js",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "verify-siwe": "tsx scripts/verify-siwe.ts",
+    "fetch-usdc-tokens": "tsx scripts/fetch-usdc-paired-tokens.ts"
   },
   "keywords": [
     "api",
@@ -23,13 +23,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@hono/node-server": "1.19.6",
+    "@hono/node-server": "1.19.11",
     "@hono/zod-validator": "0.7.4",
-    "@neondatabase/serverless": "0.9.5",
+    "@neondatabase/serverless": "1.0.2",
     "dotenv": "16.6.1",
-    "drizzle-orm": "0.33.0",
+    "drizzle-orm": "0.45.1",
     "esbuild": "0.25.11",
-    "hono": "4.10.5",
+    "hono": "4.12.7",
     "jose": "5.9.6",
     "viem": "2.46.3",
     "zod": "3.25.76"
@@ -37,10 +37,9 @@
   "devDependencies": {
     "@types/node": "22.19.1",
     "@types/pg": "8.11.10",
-    "drizzle-kit": "0.24.2",
+    "drizzle-kit": "0.31.9",
     "pg": "8.16.3",
     "tsx": "4.20.6",
-    "typescript": "5.9.3",
-    "vitest": "2.1.9"
+    "typescript": "5.9.3"
   }
 }

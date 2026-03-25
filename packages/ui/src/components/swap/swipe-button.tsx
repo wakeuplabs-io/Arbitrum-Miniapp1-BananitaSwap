@@ -75,9 +75,6 @@ export function SwipeButton({
 		}
 	}, [isDragging, dragX, getMaxDrag, onSwipeComplete, showConfetti])
 
-	const maxDrag = getMaxDrag()
-	const progress = maxDrag > 0 ? (dragX / maxDrag) * 100 : 0
-
 	return (
 		<div
 			ref={trackRef}
@@ -85,11 +82,10 @@ export function SwipeButton({
 			tabIndex={disabled ? -1 : 0}
 			aria-label={label}
 			aria-disabled={disabled}
-			className={`relative flex items-center rounded-full h-16 min-h-[64px] transition-colors select-none overflow-hidden ${
-				disabled
+			className={`relative flex items-center rounded-full h-16 min-h-[64px] transition-colors select-none overflow-hidden ${disabled
 					? 'bg-muted cursor-not-allowed border-0 outline-none'
 					: 'bg-[#FFF1BF] cursor-grab border-0 outline-none active:cursor-grabbing swipe-ready'
-			}`}
+				}`}
 			onMouseMove={(e) => handleMove(e.clientX)}
 			onMouseUp={handleEnd}
 			onMouseLeave={handleEnd}
@@ -108,9 +104,8 @@ export function SwipeButton({
 			)}
 
 			<div
-				className={`absolute inset-0 flex items-center justify-center pointer-events-none ${
-					disabled ? 'text-muted-foreground/40' : 'text-[#0A0A0A]'
-				}`}
+				className={`absolute inset-0 flex items-center justify-center pointer-events-none ${disabled ? 'text-muted-foreground/40' : 'text-[#0A0A0A]'
+					}`}
 			>
 				<span className="text-sm font-display font-bold uppercase tracking-wide">
 					{label}
@@ -130,16 +125,14 @@ export function SwipeButton({
 				onTouchStart={(e) => handleStart(e.touches[0].clientX)}
 			>
 				<div
-					className={`flex items-center justify-center rounded-full border-0 w-full h-full ${
-						disabled
+					className={`flex items-center justify-center rounded-full border-0 w-full h-full ${disabled
 							? 'bg-muted-foreground/20'
 							: '!bg-gradient-to-r !from-[#FFC700] !to-[#FFA500] !shadow-[0_4px_14px_rgba(255,199,0,0.4)]'
-					} ${!disabled && !isDragging && !isResetting && !completed ? 'swipe-thumb-hint' : ''}`}
+						} ${!disabled && !isDragging && !isResetting && !completed ? 'swipe-thumb-hint' : ''}`}
 				>
 					<span
-						className={`flex items-center justify-center ml-[3px] ${
-							disabled ? 'text-muted-foreground/40' : 'text-[#0A0A0A]'
-						}`}
+						className={`flex items-center justify-center ml-[3px] ${disabled ? 'text-muted-foreground/40' : 'text-[#0A0A0A]'
+							}`}
 					>
 						<ChevronRight className="w-8 h-8 shrink-0" />
 						<ChevronRight className="w-10 h-10 shrink-0 -ml-[27px]" />

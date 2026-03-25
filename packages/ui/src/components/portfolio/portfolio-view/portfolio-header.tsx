@@ -1,29 +1,25 @@
 import { useState, useRef, useCallback } from 'react'
-import { Copy, Check, X, Pencil } from 'lucide-react'
+import { X, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { UserProfile } from '@/hooks/use-user-profile'
 
 type PortfolioHeaderProps = {
-	wallet: string | undefined
+	lemonTag?: string | undefined
 	balanceUsd: number
 	dailyChangePercent: number
+	isLoading?: boolean
 	profile: UserProfile
 	onOpenDeposit: () => void
 }
 
-function formatAddress(address: string) {
-	if (address.length <= 10) return address
-	return `${address.slice(0, 6)}...${address.slice(-4)}`
-}
-
 export function PortfolioHeader({
-	wallet,
+	lemonTag,
 	balanceUsd,
 	dailyChangePercent,
+	isLoading,
 	profile,
 	onOpenDeposit,
 }: PortfolioHeaderProps) {
-	const [copied, setCopied] = useState(false)
 	const [avatarError, setAvatarError] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -55,17 +51,6 @@ export function PortfolioHeader({
 		},
 		[profile]
 	)
-
-	const handleCopyAddress = async () => {
-		if (!wallet) return
-		try {
-			await navigator.clipboard.writeText(wallet)
-			setCopied(true)
-			setTimeout(() => setCopied(false), 2000)
-		} catch (error) {
-			console.error('Failed to copy address:', error)
-		}
-	}
 
 	return (
 		<div className="flex flex-col items-center gap-3 pt-8 pb-4 animate-fade-in-up">
@@ -122,43 +107,40 @@ export function PortfolioHeader({
 			{avatarError && (
 				<p className="text-xs text-destructive text-center max-w-[240px]">{avatarError}</p>
 			)}
-			{wallet && (
-				<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border">
-					<span className="text-xs font-mono text-muted-foreground">{formatAddress(wallet)}</span>
-					<Button
-						type="button"
-						variant="ghost"
-						size="xs"
-						onClick={handleCopyAddress}
-						className="h-6 w-6 p-0 rounded-full hover:bg-muted"
-						aria-label="Copy wallet address"
-					>
-						{copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
-					</Button>
-				</div>
+			{lemonTag && (
+				<span className="text-xs text-muted-foreground">@{lemonTag}</span>
 			)}
 			<div className="flex flex-col items-center gap-0.5">
 				<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
 					Total value in USDC
 				</p>
-				<p className="text-5xl text-foreground tracking-tight numeric-balance">${balanceUsd.toFixed(2)}</p>
-				{balanceUsd === 0 ? (
-					<Button
-						type="button"
-						variant="default"
-						size="xs"
-						onClick={onOpenDeposit}
-						className="mt-1 rounded-full !bg-black hover:!bg-gray-900 !text-white !border-0 focus-visible:!ring-2 focus-visible:!ring-white focus-visible:!ring-offset-2"
-					>
-						Deposit to get started
-					</Button>
+				{isLoading ? (
+					<>
+						<div className="h-12 w-32 bg-muted rounded animate-pulse" aria-hidden />
+						<div className="h-4 w-20 bg-muted rounded animate-pulse mt-2" aria-hidden />
+					</>
 				) : (
-					<p className="flex items-center gap-1 text-sm text-muted-foreground">
-						<span className={dailyChangePercent >= 0 ? 'text-success' : 'text-destructive'}>
-							{dailyChangePercent >= 0 ? '▲' : '▼'}
-						</span>
-						{`${Math.abs(dailyChangePercent).toFixed(1)}% 24h`}
-					</p>
+					<>
+						<p className="text-5xl text-foreground tracking-tight numeric-balance">${balanceUsd.toFixed(2)}</p>
+						{balanceUsd === 0 ? (
+							<Button
+								type="button"
+								variant="default"
+								size="xs"
+								onClick={onOpenDeposit}
+								className="mt-1 rounded-full !bg-black hover:!bg-gray-900 !text-white !border-0 focus-visible:!ring-2 focus-visible:!ring-white focus-visible:!ring-offset-2"
+							>
+								Deposit to get started
+							</Button>
+						) : (
+							<p className="flex items-center gap-1 text-sm text-muted-foreground">
+								<span className={dailyChangePercent >= 0 ? 'text-success' : 'text-destructive'}>
+									{dailyChangePercent >= 0 ? '▲' : '▼'}
+								</span>
+								{`${Math.abs(dailyChangePercent).toFixed(1)}% 24h`}
+							</p>
+						)}
+					</>
 				)}
 			</div>
 		</div>

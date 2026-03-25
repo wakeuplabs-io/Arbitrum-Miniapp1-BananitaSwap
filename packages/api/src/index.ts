@@ -5,6 +5,7 @@ import { serve } from "@hono/node-server";
 import { env } from "./config/env.js";
 import { authRouter } from "./routes/auth.js";
 import { usersRouter } from "./routes/users.js";
+import { tokensRouter } from "./routes/tokens.js";
 import { handle } from "hono/aws-lambda";
 import type { AuthVariables } from "./middleware/auth.js";
 
@@ -16,6 +17,7 @@ app.use("*", cors());
 
 app.route("/auth", authRouter);
 app.route("/users", usersRouter);
+app.route("/tokens", tokensRouter);
 
 // For AWS Lambda
 export const handler = handle(app);

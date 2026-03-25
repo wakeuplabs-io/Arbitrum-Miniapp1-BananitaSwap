@@ -59,14 +59,16 @@ export function TokenControlPanel() {
 
 	return (
 		<>
-			<button
-				type="button"
-				onClick={() => setIsOpen(true)}
-				className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
-				aria-label="Open token control panel"
-			>
-				<Settings2 className="h-5 w-5" />
-			</button>
+			<div className="fixed bottom-20 left-0 right-0 z-50 flex justify-end pointer-events-none px-4 sm:px-6 max-w-[430px] mx-auto">
+				<button
+					type="button"
+					onClick={() => setIsOpen(true)}
+					className="pointer-events-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+					aria-label="Open token control panel"
+				>
+					<Settings2 className="h-5 w-5" />
+				</button>
+			</div>
 
 			<Dialog open={isOpen} onOpenChange={setIsOpen}>
 				<DialogContent
