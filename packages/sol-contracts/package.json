@@ -7,6 +7,7 @@
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
     "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.js --network arbitrumSepolia",
+    "deploy-sepolia-mock": "hardhat run scripts/deploy-sepolia-mock.js --network arbitrumSepolia",
     "deploy:arbitrum-one": "hardhat run scripts/deploy.js --network arbitrumOne",
     "swap": "hardhat run scripts/swap.js",
     "swap:arbitrum-sepolia": "hardhat run scripts/swap.js --network arbitrumSepolia",
@@ -18,8 +19,11 @@
     "set-provider:arbitrum-one": "hardhat run scripts/set-provider.js --network arbitrumOne",
     "set-uniswap-provider:arbitrum-sepolia": "hardhat run scripts/set-uniswap-provider.js --network arbitrumSepolia",
     "set-uniswap-provider:arbitrum-one": "hardhat run scripts/set-uniswap-provider.js --network arbitrumOne",
+    "set-uniswap-mock-provider:arbitrum-sepolia": "hardhat run scripts/set-uniswap-mock-provider.js --network arbitrumSepolia",
     "verify": "hardhat run scripts/verify.js",
-    "verify:arbitrum-sepolia": "hardhat run scripts/verify.js --network arbitrumSepolia"
+    "verify:arbitrum-sepolia": "hardhat run scripts/verify.js --network arbitrumSepolia",
+    "rust-diamond-cut": "node scripts/rust-diamond-cut.js",
+    "rust-replace-router": "node scripts/replace-router-facet.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "3.0.7",
