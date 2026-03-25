@@ -71,10 +71,6 @@ authRouter.post(
   zValidator("json", verifyBodySchema),
   async (c) => {
     const body = c.req.valid("json");
-    console.log("[Auth] Verify request body.wallet", body.wallet);
-    console.log("[Auth] Verify request body.nonce", body.nonce);
-    console.log("[Auth] Verify request body.message", body.message);
-    console.log("[Auth] Verify request body.signature", body.signature);
 
     let parsed: ReturnType<typeof parseSiweMessage>;
     try {
@@ -93,7 +89,6 @@ authRouter.post(
       });
     }
 
-    console.log("[Auth] Parsed SIWE message", parsed);
     const nonceFromMessage = parsed.nonce;
     if (typeof nonceFromMessage !== "string" || nonceFromMessage.length < 8) {
       return c.json({
@@ -123,7 +118,7 @@ authRouter.post(
       .limit(1);
 
     if (rows.length === 0) {
-      console.log("[Auth] Verify failed: nonce not found or expired =>", nonceFromMessage);
+      console.warn("[Auth] Verify failed: nonce not found or expired =>", nonceFromMessage);
       return c.json({
         verified: false,
         error: "Nonce not found or expired",
@@ -131,7 +126,7 @@ authRouter.post(
     }
     const row = rows[0];
     if (row.used) {
-      console.log("[Auth] Verify failed: nonce already used");
+      console.warn("[Auth] Verify failed: nonce already used");
       return c.json({
         verified: false,
         error: "Nonce already used",
@@ -139,40 +134,31 @@ authRouter.post(
     }
 
     const chainId = parsed.chainId;
-    console.log("[Auth] Parsed SIWE message, chainId:", chainId);
 
     let valid = false;
     try {
       const client = getPublicClientForChainId(chainId);
 
-      console.log("[Auth] /verify: verifying SIWE on chain", chainId);
       valid = await client.verifySiweMessage({
         address: body.wallet as `0x${string}`,
         message: body.message,
         signature: body.signature as `0x${string}`,
       });
-      console.log("[Auth] /verify: verifySiweMessage result =>", valid);
-
-      if (!valid) {
-        const verifyMsgResult = await client.verifyMessage({
-          address: body.wallet as `0x${string}`,
-          message: body.message,
-          signature: body.signature as `0x${string}`,
-        });
-        console.log("[Auth] /verify: verifyMessage fallback =>", verifyMsgResult);
-        valid = verifyMsgResult;
-      }
     } catch (e) {
       console.error("[Auth] SIWE verify error:", e);
-      // Bypass: continue as if validation passed
+      return c.json({
+        verified: false,
+        error: "Signature verification failed",
+      });
     }
 
     if (!valid) {
-      console.log("[Auth] /verify: invalid signature (bypassing for dev)");
-      // Bypass: continue as if validation passed
+      console.error("[Auth] /verify: invalid signature");
+      return c.json({
+        verified: false,
+        error: "Invalid signature",
+      });
     }
-
-    console.log("[Auth] /verify: signature valid, issuing JWT for", body.wallet);
 
     try {
       await db.update(authNonce).set({ used: true }).where(eq(authNonce.id, row.id));
@@ -189,7 +175,6 @@ authRouter.post(
       console.error("[Auth] JWT sign failed:", e);
       return c.json({ verified: false, error: "Server error" }, 500);
     }
-    console.log("[Auth] /verify: success");
     return c.json({ verified: true, token });
   }
 );

@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getTokenPairs, getTokensInfo, searchTokenPairs, type DexScreenerPair } from '@/services/dexscreener'
+import { getTokensInfo, type DexScreenerPair } from '@/services/dexscreener'
+import { fetchTokens, type ApiTokenItem } from '@/services/tokens-api'
 import {
     ARBITRUM_MAINNET_USDC_ADDRESS,
     ARBITRUM_SEPOLIA_USDC_ADDRESS,
@@ -35,330 +37,127 @@ export function getUsdcToken(): Token {
 }
 
 
+/** Generate a color based on symbol hash for consistency */
+function hashColor(str: string): string {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const hue = hash % 360
+    return `hsl(${hue}, 70%, 50%)`
+}
+
+/** Format totalValueLockedUSD for market cap display */
+function formatMarketCap(tvl: number): string {
+    if (!Number.isFinite(tvl) || tvl <= 0 || tvl > 1e15) return '-'
+    if (tvl >= 1e9) return `$${(tvl / 1e9).toFixed(1)}B`
+    if (tvl >= 1e6) return `$${(tvl / 1e6).toFixed(1)}M`
+    if (tvl >= 1e3) return `$${(tvl / 1e3).toFixed(1)}K`
+    return `$${Math.round(tvl)}`
+}
+
+/** Convert API token item to Token format (price/liquidity from subgraph via API). change24h optional; undefined = not found. */
+export function apiTokenItemToToken(item: ApiTokenItem, change24h?: number): Token {
+    const { otherToken, poolAddress, priceUsd, totalValueLockedUSD } = item
+    const safePrice = Number.isFinite(priceUsd) && priceUsd >= 0 && priceUsd <= 1e9 ? priceUsd : 0
+    return {
+        symbol: otherToken.symbol,
+        name: otherToken.name,
+        icon: otherToken.symbol.toLowerCase(),
+        color: hashColor(otherToken.symbol),
+        price: safePrice,
+        change24h,
+        marketCap: formatMarketCap(totalValueLockedUSD),
+        address: otherToken.address,
+        chainId: 'arbitrum',
+        pairAddress: poolAddress ?? undefined,
+    }
+}
+
 /**
- * Convert token pair to Token format for token-pairs endpoint
- * For token-pairs, we extract the quoteToken (the token paired with USDC)
- * Note: priceUsd in pair is for baseToken (USDC), so we'll need to fetch quoteToken price separately
+ * Convert DexScreener pair to Token format (for token-pairs endpoint; quoteToken = other token).
+ * Used by use-owned-tokens for portfolio holdings from getTokenPairsForAddresses.
  */
 export function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
-    // For token-pairs endpoint, baseToken is USDC, quoteToken is the token we want
     const token = pair.quoteToken
-    // priceUsd in the pair is for baseToken (USDC), not quoteToken
-    // We'll set price to 0 for now - could be enhanced to fetch from tokens endpoint
-    const priceUsd = 0
     const change24hValue = pair.priceChange?.h24
-    const change24h = typeof change24hValue === 'string'
-        ? parseFloat(change24hValue)
-        : change24hValue || 0
+    const change24h =
+        typeof change24hValue === 'string' ? parseFloat(change24hValue) : change24hValue || 0
     const liquidityValue = pair.liquidity?.usd
-    const liquidity = typeof liquidityValue === 'string'
-        ? parseFloat(liquidityValue)
-        : liquidityValue || 0
+    const liquidity =
+        typeof liquidityValue === 'string' ? parseFloat(liquidityValue) : liquidityValue || 0
     const fdvValue = pair.fdv
-    const fdv = typeof fdvValue === 'string'
-        ? parseFloat(fdvValue)
-        : fdvValue || 0
-
-    // Format market cap (use FDV if available, otherwise use liquidity as approximation)
+    const fdv = typeof fdvValue === 'string' ? parseFloat(fdvValue) : fdvValue || 0
     const marketCapValue = fdv > 0 ? fdv : liquidity
-    const marketCap = marketCapValue >= 1e9
-        ? `$${(marketCapValue / 1e9).toFixed(1)}B`
-        : marketCapValue >= 1e6
-            ? `$${(marketCapValue / 1e6).toFixed(1)}M`
-            : marketCapValue >= 1e3
+    const marketCap =
+        marketCapValue >= 1e9
+            ? `$${(marketCapValue / 1e9).toFixed(1)}B`
+            : marketCapValue >= 1e6
+              ? `$${(marketCapValue / 1e6).toFixed(1)}M`
+              : marketCapValue >= 1e3
                 ? `$${(marketCapValue / 1e3).toFixed(1)}K`
                 : `$${marketCapValue.toFixed(0)}`
-
-    // Generate a color based on symbol hash for consistency
-    const hashColor = (str: string) => {
-        let hash = 0
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash)
-        }
-        const hue = hash % 360
-        return `hsl(${hue}, 70%, 50%)`
-    }
-
     return {
         symbol: token.symbol,
         name: token.name,
         icon: token.symbol.toLowerCase(),
-        // logoUrl omitted - TokenIcon will try multiple sources automatically from address
         color: hashColor(token.symbol),
-        price: priceUsd,
+        price: 0,
         change24h,
         marketCap,
         address: token.address,
         chainId: pair.chainId,
-        // Don't include dexId - we don't want to show it in listings
         pairAddress: pair.pairAddress,
     }
 }
 
+/** Shared query key for tokens API – used by useAllTokens and useOwnedTokens. */
+export const TOKENS_QUERY_KEY = ['tokens'] as const
+
 /**
- * Hook to fetch token pairs from DexScreener using the token-pairs endpoint
- * Fetches pairs for USDC token address (mainnet only; DexScreener is mainnet-only)
- * Converts pairs to tokens, always includes USDC as the first token
+ * Hook to fetch USDC-paired tokens from backend (/tokens API).
+ * Shows tokens immediately from API; fetches 24h change from DexScreener in background (non-blocking).
  */
 export function useAllTokens() {
-    return useQuery({
-        queryKey: ['token-pairs'],
+    const tokensQuery = useQuery({
+        queryKey: TOKENS_QUERY_KEY,
         queryFn: async () => {
-            const pairs = await getTokenPairs()
-            // Convert pairs to tokens, showing only one token per address (the one with highest price)
-            // For token-pairs endpoint, baseToken is USDC, quoteToken is the token we want to display
-            // Use address as key (not address + dexId) to show only one token per address
-            const uniquePairs = new Map<string, DexScreenerPair>()
-            for (const pair of pairs) {
-                const address = pair.quoteToken.address
-                const addressLower = address.toLowerCase()
-                const key = addressLower // Only use address, not dexId
-
-                if (!uniquePairs.has(key)) {
-                    uniquePairs.set(key, pair)
-                } else {
-                    // Keep the pair with higher liquidity, but strongly prefer pairs with pairAddress
-                    // Note: We use liquidity here because token prices aren't available yet
-                    // (they're fetched later via getTokensInfo)
-                    const existing = uniquePairs.get(key)!
-                    const existingLiquidity = typeof existing.liquidity?.usd === 'string'
-                        ? parseFloat(existing.liquidity.usd)
-                        : existing.liquidity?.usd || 0
-                    const currentLiquidity = typeof pair.liquidity?.usd === 'string'
-                        ? parseFloat(pair.liquidity.usd)
-                        : pair.liquidity?.usd || 0
-
-                    const hasExistingPairAddress = !!existing.pairAddress
-                    const hasCurrentPairAddress = !!pair.pairAddress
-
-                    // Strongly prefer pairs with pairAddress
-                    if (hasCurrentPairAddress && !hasExistingPairAddress) {
-                        // Current has pairAddress, existing doesn't - prefer current
-                        uniquePairs.set(key, pair)
-                    } else if (!hasCurrentPairAddress && hasExistingPairAddress) {
-                        // Existing has pairAddress, current doesn't - keep existing
-                        // (do nothing)
-                    } else if (hasCurrentPairAddress && hasExistingPairAddress) {
-                        // Both have pairAddress - prefer higher liquidity
-                        if (currentLiquidity > existingLiquidity) {
-                            uniquePairs.set(key, pair)
-                        }
-                    } else {
-                        // Neither has pairAddress - prefer higher liquidity
-                        if (currentLiquidity > existingLiquidity) {
-                            uniquePairs.set(key, pair)
-                        }
-                    }
-                }
-            }
-
-            // Fetch token info to get actual USD prices for quoteTokens
-            const quoteTokenAddresses = Array.from(uniquePairs.values()).map(
-                (pair) => pair.quoteToken.address
-            )
-            let tokenInfosMap = new Map<string, { priceUsd: number; priceChange24h: number }>()
-
-            if (quoteTokenAddresses.length > 0) {
-                try {
-                    const tokenInfos = await getTokensInfo(quoteTokenAddresses)
-                    for (const tokenInfo of tokenInfos) {
-                        const address = tokenInfo.address.toLowerCase()
-                        tokenInfosMap.set(address, {
-                            priceUsd: tokenInfo.priceUsd,
-                            priceChange24h: tokenInfo.priceChange24h,
-                        })
-                    }
-                } catch (error) {
-                    console.warn('Error fetching token info for prices:', error)
-                }
-            }
-
-            // Convert pairs to tokens, using price info if available
-            // After fetching prices, re-select the token with highest price for each address
-            const tokensByAddress = new Map<string, Token>()
-            for (const pair of uniquePairs.values()) {
-                const token = pairToTokenFromTokenPairs(pair)
-                const address = pair.quoteToken.address.toLowerCase()
-                const tokenInfo = tokenInfosMap.get(address)
-                if (tokenInfo) {
-                    token.price = tokenInfo.priceUsd
-                    token.change24h = tokenInfo.priceChange24h
-                }
-                // Store pairAddress from the pair (ensure it's preserved)
-                // Don't store dexId as we don't want to show it in listings
-                token.pairAddress = pair.pairAddress
-
-                // Select the token with highest price for each address
-                if (!tokensByAddress.has(address)) {
-                    tokensByAddress.set(address, token)
-                } else {
-                    const existing = tokensByAddress.get(address)!
-                    const existingPrice = existing.price || 0
-                    const currentPrice = token.price || 0
-
-                    // Prefer token with pairAddress, or higher price if both/neither have it
-                    const hasExistingPairAddress = !!existing.pairAddress
-                    const hasCurrentPairAddress = !!token.pairAddress
-
-                    if (hasCurrentPairAddress && !hasExistingPairAddress) {
-                        tokensByAddress.set(address, token)
-                    } else if (!hasCurrentPairAddress && hasExistingPairAddress) {
-                        // Keep existing
-                    } else if (currentPrice > existingPrice) {
-                        tokensByAddress.set(address, token)
-                    }
-                }
-            }
-
-            const tokens = Array.from(tokensByAddress.values())
-
-            const usdc = getUsdcToken()
-
-            // Ensure USDC is first and not duplicated
-            const tokensWithoutUsdc = tokens.filter((t) => t.symbol !== 'USDC')
-            return [usdc, ...tokensWithoutUsdc]
+            const res = await fetchTokens()
+            return { tokens: res.tokens, tokenAddresses: res.tokenAddresses }
         },
-        staleTime: 60 * 1000, // 1 minute
-        refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+        staleTime: 60 * 1000,
+        refetchInterval: 5 * 60 * 1000,
     })
-}
 
-/**
- * Convert DexScreener pair to Token format
- * Used for search results from the search endpoint
- */
-function pairToToken(pair: DexScreenerPair): Token {
-    const baseToken = pair.baseToken
-    const priceUsd = pair.priceUsd ? parseFloat(pair.priceUsd) : 0
-    const change24hValue = pair.priceChange?.h24
-    const change24h = typeof change24hValue === 'string'
-        ? parseFloat(change24hValue)
-        : change24hValue || 0
-    const liquidityValue = pair.liquidity?.usd
-    const liquidity = typeof liquidityValue === 'string'
-        ? parseFloat(liquidityValue)
-        : liquidityValue || 0
-    const fdvValue = pair.fdv
-    const fdv = typeof fdvValue === 'string'
-        ? parseFloat(fdvValue)
-        : fdvValue || 0
+    const change24hQuery = useQuery({
+        queryKey: ['tokens-change24h', tokensQuery.data?.tokenAddresses ?? []],
+        queryFn: () => getTokensInfo(tokensQuery.data!.tokenAddresses),
+        enabled: !!(tokensQuery.data?.tokenAddresses?.length),
+        staleTime: 60 * 1000,
+    })
 
-    // Format market cap (use FDV if available, otherwise use liquidity as approximation)
-    const marketCapValue = fdv > 0 ? fdv : liquidity
-    const marketCap = marketCapValue >= 1e9
-        ? `$${(marketCapValue / 1e9).toFixed(1)}B`
-        : marketCapValue >= 1e6
-            ? `$${(marketCapValue / 1e6).toFixed(1)}M`
-            : marketCapValue >= 1e3
-                ? `$${(marketCapValue / 1e3).toFixed(1)}K`
-                : `$${marketCapValue.toFixed(0)}`
-
-    // Generate a color based on symbol hash for consistency
-    const hashColor = (str: string) => {
-        let hash = 0
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash)
+    const mergedData = useMemo(() => {
+        const { tokens } = tokensQuery.data ?? { tokens: [], tokenAddresses: [] }
+        if (tokens.length === 0) return undefined
+        const change24hMap = new Map<string, number>()
+        if (change24hQuery.data) {
+            for (const info of change24hQuery.data) {
+                change24hMap.set(info.address.toLowerCase(), info.priceChange24h)
+            }
         }
-        const hue = hash % 360
-        return `hsl(${hue}, 70%, 50%)`
-    }
+        const result = tokens.map((item) => {
+            const change24h = change24hMap.get(item.otherToken.address.toLowerCase())
+            return apiTokenItemToToken(item, change24h)
+        })
+        const usdc = getUsdcToken()
+        const tokensWithoutUsdc = result.filter((t) => t.symbol !== 'USDC')
+        return [usdc, ...tokensWithoutUsdc] as Token[]
+    }, [tokensQuery.data, change24hQuery.data])
 
     return {
-        symbol: baseToken.symbol,
-        name: baseToken.name,
-        icon: baseToken.symbol.toLowerCase(),
-        // logoUrl omitted - TokenIcon will try multiple sources automatically from address
-        color: hashColor(baseToken.symbol),
-        price: priceUsd,
-        change24h,
-        marketCap,
-        address: baseToken.address,
-        chainId: pair.chainId,
-        // Don't include dexId - we don't want to show it in listings
-        pairAddress: pair.pairAddress,
+        ...tokensQuery,
+        data: mergedData,
+        isFetching: tokensQuery.isFetching || change24hQuery.isFetching,
     }
 }
 
-/**
- * Hook to search for tokens on DexScreener
- * Executes search against DexScreener API when query is provided
- * Requires at least 3 characters to search
- */
-export function useTokenSearch(query: string) {
-    const trimmedQuery = query.trim()
-    const isValidQuery = trimmedQuery.length >= 0
-
-    return useQuery({
-        queryKey: ['token-search', trimmedQuery],
-        queryFn: async () => {
-            if (!isValidQuery) {
-                return []
-            }
-            const pairs = await searchTokenPairs(trimmedQuery)
-            // Show only one token per address (the one with highest price)
-            // Use address as key (not address + dexId) to show only one token per address
-            // Note: After normalization in filterUsdcPairs, USDC is always baseToken,
-            // so we extract quoteToken (the searched token) instead
-            const uniqueTokens = new Map<string, DexScreenerPair>()
-            for (const pair of pairs) {
-                // Extract quoteToken address (the searched token, since USDC is normalized to baseToken)
-                const address = pair.quoteToken.address
-
-                const addressLower = address.toLowerCase()
-                const key = addressLower // Only use address, not dexId
-
-                if (!uniqueTokens.has(key)) {
-                    uniqueTokens.set(key, pair)
-                } else {
-                    // Keep the pair with higher price, but strongly prefer pairs with pairAddress
-                    const existing = uniqueTokens.get(key)!
-                    const existingPrice = existing.priceUsd ? parseFloat(existing.priceUsd) : 0
-                    const currentPrice = pair.priceUsd ? parseFloat(pair.priceUsd) : 0
-
-                    const hasExistingPairAddress = !!existing.pairAddress
-                    const hasCurrentPairAddress = !!pair.pairAddress
-
-                    // Strongly prefer pairs with pairAddress
-                    if (hasCurrentPairAddress && !hasExistingPairAddress) {
-                        // Current has pairAddress, existing doesn't - prefer current
-                        uniqueTokens.set(key, pair)
-                    } else if (!hasCurrentPairAddress && hasExistingPairAddress) {
-                        // Existing has pairAddress, current doesn't - keep existing
-                        // (do nothing)
-                    } else if (hasCurrentPairAddress && hasExistingPairAddress) {
-                        // Both have pairAddress - prefer higher price
-                        if (currentPrice > existingPrice) {
-                            uniqueTokens.set(key, pair)
-                        }
-                    } else {
-                        // Neither has pairAddress - prefer higher price
-                        if (currentPrice > existingPrice) {
-                            uniqueTokens.set(key, pair)
-                        }
-                    }
-                }
-            }
-            // Use pairToTokenFromTokenPairs since pairs are normalized (USDC is baseToken, searched token is quoteToken)
-            return Array.from(uniqueTokens.values()).map((pair) => {
-                // Create a modified pair where quoteToken becomes baseToken for pairToToken
-                // This way we extract the searched token (ESP) instead of USDC
-                const modifiedPair = {
-                    ...pair,
-                    baseToken: pair.quoteToken,
-                    quoteToken: pair.baseToken,
-                }
-                return pairToToken(modifiedPair)
-            })
-        },
-        enabled: isValidQuery,
-        staleTime: 30 * 1000, // 30 seconds
-    })
-}
-
-/**
- * Hook to fetch popular tokens from DexScreener
- * @deprecated Use useAllTokens() instead and filter client-side
- */
-export function usePopularTokens() {
-    return useAllTokens()
-}

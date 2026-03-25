@@ -113,7 +113,6 @@ Optimize bundle size and loading performance
 
 Testing
 Write thorough unit tests for functions and components
-Use Vitest for API testing
 Use Jest for SDK testing
 Follow Arrange-Act-Assert pattern
 Mock external dependencies and API calls

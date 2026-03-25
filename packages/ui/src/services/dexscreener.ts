@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { ARBITRUM_MAINNET_USDC_ADDRESS } from '@/shared/config/network'
 
 const DEXSCREENER_API_BASE = 'https://api.dexscreener.com'
 /** DexScreener only supports mainnet; always use Arbitrum mainnet for API calls */
@@ -31,15 +30,10 @@ const PairSchema = z.object({
     fdv: z.union([z.number(), z.string()]).optional(),
 }).passthrough()
 
-const SearchResponseSchema = z.object({
-    pairs: z.array(PairSchema).nullable(),
-})
-
 // Token pairs endpoint returns an array directly, not an object
 const TokenPairsResponseSchema = z.array(PairSchema)
 
 export type DexScreenerPair = z.infer<typeof PairSchema>
-export type DexScreenerSearchResponse = z.infer<typeof SearchResponseSchema>
 
 /**
  * Check if a pair is from Arbitrum chain (mainnet only; DexScreener has no testnet)
@@ -64,7 +58,7 @@ function filterArbitrumPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
 /**
  * Allowed DEX IDs for token listings
  */
-const ALLOWED_DEX_IDS = ['camelot']
+const ALLOWED_DEX_IDS = ['camelot', 'uniswap']
 
 /**
  * Filter pairs to only include allowed DEXs (Camelot)
@@ -104,186 +98,107 @@ function isUsdcAddress(address: string | undefined): boolean {
  * Normalizes pairs so USDC is always the baseToken for consistency
  */
 function filterUsdcPairs(pairs: DexScreenerPair[]): DexScreenerPair[] {
-    return pairs
-        .filter((pair) => {
-            const isUsdcQuote = isUsdcAddress(pair.quoteToken?.address)
-
-            if (!isUsdcQuote) {
-                return false
-            }
-            return true
-        })
-        .map((pair) => {
-            // Normalize pairs: if USDC is quoteToken, swap base and quote so USDC is always baseToken
-            if (isUsdcAddress(pair.quoteToken?.address)) {
-                // Swap base and quote tokens so USDC is always baseToken
-                return {
-                    ...pair,
-                    baseToken: pair.quoteToken,
-                    quoteToken: pair.baseToken,
-                }
-            }
-            return pair
-        })
+	return pairs
+		.filter((pair) => {
+			const isUsdcBase = isUsdcAddress(pair.baseToken?.address)
+			const isUsdcQuote = isUsdcAddress(pair.quoteToken?.address)
+			return isUsdcBase || isUsdcQuote
+		})
+		.map((pair) => {
+			// Normalize pairs: if USDC is quoteToken, swap base and quote so USDC is always baseToken
+			if (isUsdcAddress(pair.quoteToken?.address)) {
+				return {
+					...pair,
+					baseToken: pair.quoteToken,
+					quoteToken: pair.baseToken,
+				}
+			}
+			return pair
+		})
 }
 
-export type PriceDataPoint = {
-    timestamp: number
-    price: number
-}
+const GET_TOKENS_INFO_BATCH_SIZE = 25 // DexScreener limit ~30 addresses per request
 
-
-/**
- * Search for token pairs on DexScreener
- * Only returns tokens from Arbitrum networks
- * Requires at least 3 characters to search
- * @param query - Search query (token name, symbol, or address)
- * @returns Array of pairs matching the query, filtered to only Arbitrum networks
- */
-export async function searchTokenPairs(
-    query: string
-): Promise<DexScreenerPair[]> {
-    const trimmedQuery = query.trim()
-
-
-    // Require at least 3 characters to search
-    if (!trimmedQuery || trimmedQuery.length < 3) {
-        return []
-    }
-
-    try {
-        const url = new URL(`${DEXSCREENER_API_BASE}/latest/dex/search`)
-        url.searchParams.set('q', `arbitrum ${trimmedQuery}`)
-
-        const response = await fetch(url.toString())
-
-        if (!response.ok) {
-            throw new Error(`DexScreener API error: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-        const validated = SearchResponseSchema.parse(data)
-
-        const pairs = validated.pairs || []
-
-        const arbitrumPairs = filterArbitrumPairs(pairs)
-        let usdcPairs = filterUsdcPairs(arbitrumPairs)
-        usdcPairs = filterAllowedDexs(usdcPairs)
-
-        return usdcPairs
-    } catch (error) {
-        console.error('Error searching token pairs:', error)
-        throw error
-    }
+export type TokenInfo = {
+    address: string
+    priceUsd: number
+    priceChange24h: number
+    fdv: number
 }
 
 /**
  * Get token information using the tokens endpoint
- * Note: This endpoint actually returns pairs, not token info directly
- * We extract token info from pairs where the requested token is the baseToken
- * @param tokenAddresses - Array of token addresses to fetch
- * @returns Array of token information extracted from pairs
+ * Note: This endpoint returns pairs, not token info directly.
+ * Extracts token info from pairs where the requested token is baseToken or quoteToken.
+ * Batches requests (DexScreener accepts ~30 addresses max per request).
  */
 export async function getTokensInfo(
     tokenAddresses: string[]
-): Promise<Array<{ address: string; priceUsd: number; priceChange24h: number }>> {
-    try {
-        if (tokenAddresses.length === 0) {
-            return []
-        }
+): Promise<TokenInfo[]> {
+    if (tokenAddresses.length === 0) return []
 
-        const addressesParam = tokenAddresses.join(',')
+    const tokenInfoMap = new Map<string, { priceUsd: number; priceChange24h: number; liquidity: number; fdv: number }>()
+    const addressSet = new Set(tokenAddresses.map((addr) => addr.toLowerCase()))
+
+    const batchPromises = []
+    for (let i = 0; i < tokenAddresses.length; i += GET_TOKENS_INFO_BATCH_SIZE) {
+        const batch = tokenAddresses.slice(i, i + GET_TOKENS_INFO_BATCH_SIZE)
+        const addressesParam = batch.join(',')
         const url = `${DEXSCREENER_API_BASE}/tokens/v1/${DEXSCREENER_CHAIN_ID}/${addressesParam}`
+        batchPromises.push(
+            fetch(url)
+                .then(async (response) => {
+                    if (!response.ok) return []
+                    const data = await response.json()
+                    const allPairs = TokenPairsResponseSchema.parse(data)
+                    return filterArbitrumPairs(allPairs)
+                })
+                .catch((error) => {
+                    console.warn('DexScreener getTokensInfo batch error:', error)
+                    return []
+                })
+        )
+    }
 
-        const response = await fetch(url)
+    const batchResults = await Promise.all(batchPromises)
 
-        if (!response.ok) {
-            throw new Error(`DexScreener API error: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-
-        // The endpoint returns pairs, not token info
-        const allPairs = TokenPairsResponseSchema.parse(data)
-
-        // Filter to ensure only Arbitrum pairs are returned (defense in depth)
-        const pairs = filterArbitrumPairs(allPairs)
-
-        // Extract token info from pairs where the requested token is the baseToken
-        // Store both price info and liquidity to pick the best pair for each token
-        const tokenInfoMap = new Map<string, {
-            priceUsd: number
-            priceChange24h: number
-            liquidity: number
-        }>()
-        const addressSet = new Set(tokenAddresses.map(addr => addr.toLowerCase()))
-
+    for (const pairs of batchResults) {
         for (const pair of pairs) {
-            const baseAddress = pair.baseToken.address.toLowerCase()
-            if (addressSet.has(baseAddress)) {
-                // This pair has the requested token as baseToken
+                const baseAddress = pair.baseToken.address.toLowerCase()
                 const priceUsd = pair.priceUsd ? parseFloat(pair.priceUsd) : 0
                 const change24hValue = pair.priceChange?.h24
-                const priceChange24h = typeof change24hValue === 'string'
-                    ? parseFloat(change24hValue)
-                    : change24hValue || 0
-                const liquidity = typeof pair.liquidity?.usd === 'string'
-                    ? parseFloat(pair.liquidity.usd)
-                    : pair.liquidity?.usd || 0
+                const priceChange24h =
+                    typeof change24hValue === 'string' ? parseFloat(change24hValue) : change24hValue || 0
+                const liquidity =
+                    typeof pair.liquidity?.usd === 'string'
+                        ? parseFloat(pair.liquidity.usd)
+                        : pair.liquidity?.usd || 0
+                const fdvValue = pair.fdv
+                const fdv = typeof fdvValue === 'string' ? parseFloat(fdvValue) : fdvValue || 0
 
-                // Keep the pair with highest liquidity for each token
-                if (!tokenInfoMap.has(baseAddress)) {
-                    tokenInfoMap.set(baseAddress, { priceUsd, priceChange24h, liquidity })
-                } else {
-                    const existing = tokenInfoMap.get(baseAddress)!
-                    if (liquidity > existing.liquidity) {
-                        tokenInfoMap.set(baseAddress, { priceUsd, priceChange24h, liquidity })
+                // priceUsd is for baseToken; when our token is quoteToken (e.g. USDC/TOKEN pair), we need quote price
+                // For baseToken=USDC quoteToken=TOKEN, priceUsd≈1 (USDC) - skip, we'd need different logic
+                // For baseToken=TOKEN quoteToken=USDC, priceUsd=token price - use it
+                if (addressSet.has(baseAddress)) {
+                    const existing = tokenInfoMap.get(baseAddress)
+                    if (!existing || liquidity > existing.liquidity) {
+                        tokenInfoMap.set(baseAddress, {
+                            priceUsd,
+                            priceChange24h,
+                            liquidity,
+                            fdv: fdv > 0 ? fdv : liquidity,
+                        })
                     }
                 }
             }
-        }
-
-        // Convert map to array format (remove liquidity from result)
-        return Array.from(tokenInfoMap.entries()).map(([address, info]) => ({
-            address,
-            priceUsd: info.priceUsd,
-            priceChange24h: info.priceChange24h,
-        }))
-    } catch (error) {
-        console.error('Error fetching token info:', error)
-        throw error
     }
-}
 
-/**
- * Get token pairs for a specific token address
- * Uses /token-pairs/v1/{chainId}/{tokenAddress} endpoint
- * @param tokenAddress - Token address to get pairs for (mainnet USDC)
- * @returns Array of pairs for the token
- */
-export async function getTokenPairs(): Promise<DexScreenerPair[]> {
-    try {
-        const address = ARBITRUM_MAINNET_USDC_ADDRESS
-        const url = `${DEXSCREENER_API_BASE}/token-pairs/v1/${DEXSCREENER_CHAIN_ID}/${address}`
-
-        const response = await fetch(url)
-
-        if (!response.ok) {
-            throw new Error(`DexScreener API error: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-        const validated = TokenPairsResponseSchema.parse(data)
-
-        const arbitrumPairs = filterArbitrumPairs(validated)
-        const usdcPairs = filterUsdcPairs(arbitrumPairs)
-        const allowedDexPairs = filterAllowedDexs(usdcPairs)
-
-        return allowedDexPairs
-    } catch (error) {
-        console.error('Error fetching token pairs:', error)
-        throw error
-    }
+    return Array.from(tokenInfoMap.entries()).map(([address, info]) => ({
+        address,
+        priceUsd: info.priceUsd,
+        priceChange24h: info.priceChange24h,
+        fdv: info.fdv,
+    }))
 }
 
 /**

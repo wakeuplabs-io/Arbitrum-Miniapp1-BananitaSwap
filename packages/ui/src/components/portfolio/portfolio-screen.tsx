@@ -2,7 +2,6 @@ import { DollarSign, ArrowLeftRight, ArrowDownToLine } from 'lucide-react'
 import { TokensEmptyState } from './portfolio-view/tokens-empty-state'
 import { PortfolioHeader } from './portfolio-view/portfolio-header'
 import { PortfolioActions } from './portfolio-view/portfolio-actions'
-import { LemonMiniappContextDebug } from './portfolio-view/lemon-miniapp-context-debug'
 import { TokenListItem } from './portfolio-view/token-list-item'
 import { TokenListSkeleton } from './portfolio-view/token-list-skeleton'
 import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
@@ -36,7 +35,7 @@ export function PortfolioScreen({
 	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
 		useUserHoldings(portfolioChain)
 	const profile = useUserProfile()
-	const { wallet, isAuthenticated, isInLemonWebView, isAuthenticating, authLogs, clearAuthLogs } = useLemonMiniapp()
+	const { lemonTag, isAuthenticating } = useLemonMiniapp()
 
 	const actions = [
 		{ ...ACTIONS[0], onClick: onOpenDeposit },
@@ -45,11 +44,12 @@ export function PortfolioScreen({
 	]
 
 	return (
-		<div className="flex flex-col h-full overflow-y-auto pb-20">
+		<div className="flex flex-col h-full overflow-y-auto overflow-x-hidden pb-20">
 			<PortfolioHeader
-				wallet={wallet}
+				lemonTag={lemonTag}
 				balanceUsd={balanceUsd}
 				dailyChangePercent={dailyChangePercent}
+				isLoading={isLoading || isAuthenticating}
 				profile={profile}
 				onOpenDeposit={onOpenDeposit}
 			/>
@@ -58,26 +58,17 @@ export function PortfolioScreen({
 
 			<div className="h-0.5 bg-border m-4" />
 
-			<LemonMiniappContextDebug
-				wallet={wallet}
-				isAuthenticated={isAuthenticated}
-				isInLemonWebView={isInLemonWebView}
-				isAuthenticating={isAuthenticating}
-				authLogs={authLogs}
-				onClearAuthLogs={clearAuthLogs}
-			/>
-
-			<div className="px-4 pt-4 flex-1">
+			<div className="px-3 sm:px-4 pt-4 flex-1 min-w-0">
 				<h2 className="text-base sm:text-lg font-display font-bold uppercase tracking-wide text-foreground mb-8">
 					Your Tokens
 				</h2>
 
-				{isLoading ? (
+				{isLoading || isAuthenticating ? (
 					<TokenListSkeleton />
 				) : nonUsdcHoldings.length === 0 ? (
 					<TokensEmptyState onBuyNow={onOpenSwap} />
 				) : (
-					<div className="flex flex-col gap-4 stagger-slide-up">
+					<div className="flex flex-col gap-4 stagger-slide-up min-w-0">
 						{nonUsdcHoldings.map((holding) => (
 							<TokenListItem
 								key={holding.token.symbol}

@@ -9,8 +9,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TokenIcon } from './token-icon'
-import { useAllTokens, useTokenSearch } from '@/hooks/use-tokens'
-import { useDebounce } from '@/hooks/use-debounce'
+import { formatPrice } from '@/lib/utils'
+import { useAllTokens } from '@/hooks/use-tokens'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import type { Token } from '@/lib/tokens'
 
@@ -31,12 +31,14 @@ function filterByExcludeSymbol(tokens: Token[], excludeSymbol?: string): Token[]
 }
 
 /**
- * Filter tokens by search query (client-side filtering)
+ * Filter tokens by search query (client-side filtering).
+ * Requires at least 2 characters to filter; otherwise returns full list.
  */
 function filterBySearchQuery(tokens: Token[], query: string): Token[] {
-	if (query.trim().length === 0) return tokens
+	const trimmed = query.trim()
+	if (trimmed.length < 2) return tokens
 
-	const queryLower = query.trim().toLowerCase()
+	const queryLower = trimmed.toLowerCase()
 	return tokens.filter((t) => {
 		const symbolMatch = t.symbol?.toLowerCase().includes(queryLower)
 		const nameMatch = t.name?.toLowerCase().includes(queryLower)
@@ -46,20 +48,16 @@ function filterBySearchQuery(tokens: Token[], query: string): Token[] {
 }
 
 /**
- * Hook for buy mode token selection
+ * Hook for buy mode token selection.
+ * Filters allTokens client-side for instant search (no API call).
  */
 function useBuyModeTokens(query: string, excludeSymbol?: string) {
-	const debouncedQuery = useDebounce(query, 300)
-	const { data: allTokens = [], isLoading: isLoadingAll } = useAllTokens()
-	const { data: searchResults = [], isLoading: isLoadingSearch } = useTokenSearch(debouncedQuery)
-
-	const shouldShowSearch = query.trim().length >= 3
-	const isLoading = shouldShowSearch ? isLoadingSearch : isLoadingAll
+	const { data: allTokens = [], isLoading } = useAllTokens()
 
 	const tokens = useMemo(() => {
-		const tokenList = shouldShowSearch ? searchResults : allTokens
-		return filterByExcludeSymbol(tokenList, excludeSymbol)
-	}, [shouldShowSearch, searchResults, allTokens, excludeSymbol])
+		const filteredBySearch = filterBySearchQuery(allTokens, query)
+		return filterByExcludeSymbol(filteredBySearch, excludeSymbol)
+	}, [allTokens, query, excludeSymbol])
 
 	return { tokens, isLoading }
 }
@@ -120,14 +118,6 @@ export function TokenSelectModal({
 		}
 	}
 
-	function formatPrice(price: number) {
-		if (price < 0.001) return `$${price.toFixed(7)}`
-		if (price < 1) return `$${price.toFixed(4)}`
-		if (price >= 1000)
-			return `$${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-		return `$${price.toFixed(2)}`
-	}
-
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
 			<DialogContent fullScreen showCloseButton={false} className="overflow-hidden">
@@ -182,15 +172,9 @@ export function TokenSelectModal({
 						) : tokens.length === 0 ? (
 							<div className="flex flex-col items-center justify-center py-12 text-center">
 								<p className="text-sm text-muted-foreground">
-									{mode === 'sell'
-										? query.trim().length > 0
-											? 'No tokens found. Try a different search.'
-											: 'No tokens available.'
-										: query.trim().length >= 3
-											? 'No tokens found. Try a different search.'
-											: query.trim().length > 0
-												? 'Type at least 3 characters to search'
-												: 'No tokens available.'}
+									{query.trim().length > 0
+										? 'No tokens found. Try a different search.'
+										: 'No tokens available.'}
 								</p>
 							</div>
 						) : (
@@ -227,11 +211,16 @@ export function TokenSelectModal({
 											{formatPrice(token.price)}
 										</span>
 										<span
-											className={`text-xs numeric ${token.change24h >= 0 ? 'text-success' : 'text-destructive'
+											className={`text-xs numeric ${token.change24h == null
+													? 'text-muted-foreground'
+													: token.change24h >= 0
+														? 'text-success'
+														: 'text-destructive'
 												}`}
 										>
-											{token.change24h >= 0 ? '+' : ''}
-											{token.change24h.toFixed(3)}%
+											{token.change24h == null
+												? '-'
+												: `${token.change24h >= 0 ? '+' : ''}${token.change24h.toFixed(3)}%`}
 										</span>
 									</div>
 								</button>
