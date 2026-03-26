@@ -12,13 +12,15 @@ use crate::interfaces::IERC20;
 sol_interface! {
     interface ICamelotV3Router {
         function exactInputSingle(
-            address tokenIn,
-            address tokenOut,
-            address recipient,
-            uint256 deadline,
-            uint256 amountIn,
-            uint256 amountOutMinimum,
-            uint160 sqrtPriceLimitX96
+            (
+                address,
+                address,
+                address,
+                uint256, // deadline
+                uint256, // amountIn
+                uint256, // amountOutMinimum
+                uint160
+            ) calldata params
         ) external payable returns (uint256 amountOut);
     }
 }
@@ -74,13 +76,15 @@ impl CamelotAdapter {
         let amount_out = ICamelotV3Router::new(router_addr).exact_input_single(
             self.vm(),
             call,
-            token_in,
-            token_out,
-            caller,   // recipient = DexRouter
-            deadline,
-            amount_in,
-            min_out,
-            stylus_sdk::alloy_primitives::U160::ZERO,
+            (
+                token_in,
+                token_out,
+                caller,   // recipient = DexRouter
+                deadline,
+                amount_in,
+                min_out,
+                stylus_sdk::alloy_primitives::U160::ZERO,
+            ),
         )?;
 
         // Reset approval
