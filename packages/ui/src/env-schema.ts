@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAddress } from "viem";
 
 // Environment schema - pure validation rules without side effects
 export const EnvSchema = z
@@ -10,9 +11,34 @@ export const EnvSchema = z
         }),
       })
       .default("development"),
+    IS_TESTNET: z.boolean().default(false),
     API_URL: z.string().url().optional().default("http://localhost:3000"),
     RPC_URL_SEPOLIA: z.string().url().optional(),
     RPC_URL_MAINNET: z.string().url().optional(),
+
+    // Router (Rust/Stylus) addresses per network
+    VITE_ROUTER_ADDRESS_SEPOLIA: z
+      .string()
+      .optional()
+      .refine((v) => v === undefined || isAddress(v), {
+        message: "VITE_ROUTER_ADDRESS_SEPOLIA must be a valid address",
+      }),
+    VITE_ROUTER_ADDRESS_MAINNET: z
+      .string()
+      .optional()
+      .refine((v) => v === undefined || isAddress(v), {
+        message: "VITE_ROUTER_ADDRESS_MAINNET must be a valid address",
+      }),
+
+    // Router swap provider selector (uint8)
+    VITE_PROVIDER_ID: z
+      .string()
+      .optional()
+      .refine((v) => {
+        if (v === undefined) return true
+        const n = Number(v)
+        return Number.isInteger(n) && n >= 0 && n <= 255
+      }, "VITE_PROVIDER_ID must be a uint8 (0-255)"),
   });
 
 export type Env = z.infer<typeof EnvSchema>;

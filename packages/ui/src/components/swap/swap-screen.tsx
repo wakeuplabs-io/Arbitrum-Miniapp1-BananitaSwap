@@ -7,8 +7,9 @@ import { SwipeButton } from './swipe-button'
 import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
 import type { Token } from '@/lib/tokens'
 import { getUsdcToken } from '@/hooks/use-tokens'
-import { useMockTokenState } from '@/contexts/mock-token-state'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
+import { useRouterSwap } from '@/hooks/use-router-swap'
+import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 
 
 type SwapScreenProps = {
@@ -30,8 +31,9 @@ export function SwapScreen({
 }: SwapScreenProps) {
 	const navigate = useNavigate()
 	const usdc = getUsdcToken()
-	const { getUsdcBalance, getTokenBalance } = useUserHoldings('mainnet')
-	const { isMocking, swap: mockSwap } = useMockTokenState()
+	const { getUsdcBalance, getTokenBalance, isLoading } = useUserHoldings('mainnet')
+	const { isAuthenticating } = useLemonMiniapp()
+	const { swap: routerSwap, isSwapping, errorMessage } = useRouterSwap()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
 	const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
@@ -44,6 +46,7 @@ export function SwapScreen({
 
 	// Get USDC balance only
 	const usdcBalance = getUsdcBalance()
+	const isHoldingsLoading = isLoading || isAuthenticating
 
 	// Get balance from mock holdings if available, otherwise use token balance
 	const topBalance = topToken
@@ -157,10 +160,14 @@ export function SwapScreen({
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
 						Available USDC
 					</p>
-					<p className="text-5xl text-foreground mt-1 tracking-tight numeric-balance">
-						${usdcBalance.toFixed(2)}
-					</p>
-					{usdcBalance === 0 && (
+					{isHoldingsLoading || usdcBalance === null ? (
+						<div className="h-12 w-32 bg-muted rounded animate-pulse mt-1" aria-hidden />
+					) : (
+						<p className="text-5xl text-foreground mt-1 tracking-tight numeric-balance">
+							${usdcBalance.toFixed(2)}
+						</p>
+					)}
+					{!isHoldingsLoading && usdcBalance === 0 && (
 						<Button
 							type="button"
 							variant="default"
@@ -410,29 +417,52 @@ export function SwapScreen({
 			</div>
 
 			<div className="fixed bottom-16 left-0 right-0 px-4 pt-3 pb-4 bg-[#FFFFFF] max-w-[430px] mx-auto z-30">
+				{errorMessage && (
+					<p className="text-xs text-destructive text-center mb-2" role="alert">
+						{errorMessage}
+					</p>
+				)}
 				<SwipeButton
 					label={swipeLabel}
-					disabled={!isValid || isProcessing}
+					disabled={!isValid || isProcessing || isSwapping}
 					onSwipeComplete={async () => {
-						if (isMocking && topToken && bottomToken && amountValue > 0) {
-							setIsProcessing(true)
-							try {
-								await mockSwap(
-									topToken.symbol,
-									bottomToken.symbol,
-									amountValue,
-									outputValue,
-									bottomToken
-								)
-								onSwapComplete()
-							} catch (err) {
-								console.error('Swap error:', err)
-								// Error handling could be added here if needed
-							} finally {
-								setIsProcessing(false)
-							}
-						} else {
+						if (!topToken || !bottomToken || amountValue <= 0) {
 							onSwapComplete()
+							return
+						}
+
+						try {
+							setIsProcessing(true)
+
+							if (direction === 'buy') {
+								if (!bottomToken.address) {
+									throw new Error('Missing token address for buy')
+								}
+
+								await routerSwap({
+									direction: 'buy',
+									tokenAddress: bottomToken.address as `0x${string}`,
+									amountInHuman: amountValue,
+									expectedOutHuman: outputValue,
+								})
+							} else {
+								if (!topToken.address) {
+									throw new Error('Missing token address for sell')
+								}
+
+								await routerSwap({
+									direction: 'sell',
+									tokenAddress: topToken.address as `0x${string}`,
+									amountInHuman: amountValue,
+									expectedOutHuman: outputValue,
+								})
+							}
+
+							onSwapComplete()
+						} catch (err) {
+							console.error('Swap error:', err)
+						} finally {
+							setIsProcessing(false)
 						}
 					}}
 				/>
