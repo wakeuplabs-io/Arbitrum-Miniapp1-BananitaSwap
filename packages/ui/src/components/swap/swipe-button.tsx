@@ -11,7 +11,8 @@ type SwipeButtonProps = {
 
 const THRESHOLD_RATIO = 0.6
 const THUMB_SIZE = 64
-const TRACK_INSET = 8
+const TRACK_INSET = 16
+const EDGE_BACK_GESTURE_GUARD_PX = 28
 
 export function SwipeButton({
 	label,
@@ -34,6 +35,11 @@ export function SwipeButton({
 	const handleStart = useCallback(
 		(clientX: number) => {
 			if (disabled || completed) return
+			const trackRect = trackRef.current?.getBoundingClientRect()
+			if (trackRect && clientX < trackRect.left + EDGE_BACK_GESTURE_GUARD_PX) {
+				// Avoid initiating swipe in the OS back-gesture zone.
+				return
+			}
 			setIsDragging(true)
 			setIsResetting(false)
 			startXRef.current = clientX - dragX
@@ -86,10 +92,16 @@ export function SwipeButton({
 					? 'bg-muted cursor-not-allowed border-0 outline-none'
 					: 'bg-[#FFF1BF] cursor-grab border-0 outline-none active:cursor-grabbing swipe-ready'
 				}`}
+			style={{ touchAction: 'pan-y' }}
 			onMouseMove={(e) => handleMove(e.clientX)}
 			onMouseUp={handleEnd}
 			onMouseLeave={handleEnd}
-			onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+			onTouchMove={(e) => {
+				if (!disabled && e.cancelable) {
+					e.preventDefault()
+				}
+				handleMove(e.touches[0].clientX)
+			}}
 			onTouchEnd={handleEnd}
 		>
 			{/* Subtle yellow progress fill during swipe (opacity 0.3) */}
@@ -119,10 +131,15 @@ export function SwipeButton({
 					height: THUMB_SIZE,
 					left: TRACK_INSET,
 					transform: `translate3d(${dragX}px, -50%, 0)`,
-					touchAction: 'none',
+					touchAction: 'pan-y',
 				}}
 				onMouseDown={(e) => handleStart(e.clientX)}
-				onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+				onTouchStart={(e) => {
+					if (!disabled && e.cancelable) {
+						e.preventDefault()
+					}
+					handleStart(e.touches[0].clientX)
+				}}
 			>
 				<div
 					className={`flex items-center justify-center rounded-full border-0 w-full h-full ${disabled
