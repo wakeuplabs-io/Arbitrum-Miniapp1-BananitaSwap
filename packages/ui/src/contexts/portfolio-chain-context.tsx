@@ -18,8 +18,7 @@ const PortfolioChainContext = createContext<PortfolioChainContextType | undefine
 )
 
 function getDefaultPortfolioChain(): PortfolioChain {
-	const isTestEnv =
-		envParsed.NODE_ENV === 'development' || envParsed.NODE_ENV === 'staging'
+	const isTestEnv = envParsed.IS_TESTNET
 	return isTestEnv ? 'sepolia' : 'mainnet'
 }
 

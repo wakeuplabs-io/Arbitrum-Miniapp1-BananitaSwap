@@ -5,6 +5,11 @@ const env = {
   RPC_URL_MAINNET: import.meta.env.VITE_RPC_URL_MAINNET,
   NODE_ENV: import.meta.env.NODE_ENV,
   API_URL: import.meta.env.VITE_API_URL,
+  IS_TESTNET: import.meta.env.VITE_IS_TESTNET === "true",
+
+  VITE_ROUTER_ADDRESS_SEPOLIA: import.meta.env.VITE_ROUTER_ADDRESS_SEPOLIA,
+  VITE_ROUTER_ADDRESS_MAINNET: import.meta.env.VITE_ROUTER_ADDRESS_MAINNET,
+  VITE_PROVIDER_ID: import.meta.env.VITE_PROVIDER_ID,
 };
 
 const parseResult = EnvSchema.safeParse(env);

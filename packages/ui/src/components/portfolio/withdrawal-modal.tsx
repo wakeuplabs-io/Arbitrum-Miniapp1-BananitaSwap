@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
 import { SwipeButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
-import { useMockTokenState } from '@/contexts/mock-token-state'
 import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
@@ -23,7 +22,6 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
     const { portfolioChain } = usePortfolioChain()
     const { getTotalBalanceUsd } = useUserHoldings(portfolioChain)
     const balanceUsd = getTotalBalanceUsd()
-    const { isMocking, withdraw: mockWithdraw } = useMockTokenState()
     const { handleWithdraw, isInLemonWebView } = useLemonMiniapp()
 
     const quickAmounts = [25, 50, 100]
@@ -56,18 +54,13 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
         setError(null)
 
         try {
-            if (isMocking) {
-                await mockWithdraw(numericValue, 'USDC')
-                setShowSuccess(true)
-            } else {
-                if (!isInLemonWebView) {
-                    setError('Please open this app in Lemon Cash to withdraw')
-                    return
-                }
-
-                await handleWithdraw(amount, TokenName.USDC)
-                setShowSuccess(true)
+            if (!isInLemonWebView) {
+                setError('Please open this app in Lemon Cash to withdraw')
+                return
             }
+
+            await handleWithdraw(amount, TokenName.USDC)
+            setShowSuccess(true)
         } catch (err) {
             const errorMessage =
                 err instanceof Error

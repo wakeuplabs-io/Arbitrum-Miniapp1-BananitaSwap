@@ -7,9 +7,9 @@ import envParsed from "@/env-parsed";
 export const ARBITRUM_SEPOLIA_USDC_ADDRESS =
   "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
 
-/** USDC.e on Arbitrum mainnet */
+/** Native USDC on Arbitrum mainnet */
 export const ARBITRUM_MAINNET_USDC_ADDRESS =
-  "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8";
+  "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 
 export type NetworkConfig = {
   chain: Chain;
@@ -29,29 +29,11 @@ const arbitrumSepoliaConfig: NetworkConfig = {
   explorerUrl: "https://sepolia.arbiscan.io",
 };
 
-const NETWORK_BY_ENV: Record<string, NetworkConfig> = {
-  development: arbitrumSepoliaConfig,
-  staging: arbitrumSepoliaConfig,
-  production: arbitrumMainnetConfig,
-};
-
-/** Portfolio chain inferred from NETWORK_BY_ENV (development/staging → sepolia, production → mainnet) */
 export function getPortfolioChainFromEnv(): PortfolioChain {
-  const { chain } = NETWORK_BY_ENV[envParsed.NODE_ENV] ?? arbitrumSepoliaConfig
-  return chain.id === arbitrum.id ? 'mainnet' : 'sepolia'
+  return envParsed.IS_TESTNET ? "sepolia" : "mainnet";
 }
 
-/** App chain: Sepolia for dev/staging (Lemon miniapp), mainnet for production */
-export const getNetworkConfig = (): NetworkConfig => {
-  const { RPC_URL_SEPOLIA: RPC_URL, NODE_ENV } = envParsed;
-  const base = NETWORK_BY_ENV[NODE_ENV];
-  return {
-    ...base,
-    rpcUrl: RPC_URL || base.chain.rpcUrls.default.http[0],
-  };
-};
-
-/** Mainnet config (DexScreener, swap, and portfolio when viewing mainnet) */
+/** Mainnet config (DexScreener, swap, and portfolio) */
 export function getMainnetConfig(): NetworkConfig {
   const { RPC_URL_MAINNET } = envParsed;
   return {
@@ -60,12 +42,27 @@ export function getMainnetConfig(): NetworkConfig {
   };
 }
 
-/** Sepolia config (Lemon miniapp wallet, portfolio when viewing Sepolia) */
+/** Sepolia config (for sepolia-specific reads) */
 export function getSepoliaConfig(): NetworkConfig {
   const { RPC_URL_SEPOLIA: RPC_URL } = envParsed;
   return {
     ...arbitrumSepoliaConfig,
     rpcUrl: RPC_URL || arbitrumSepolia.rpcUrls.default.http[0],
+  };
+}
+
+export function getNetworkConfig(): NetworkConfig {
+  const baseConfig =
+    getPortfolioChainFromEnv() === "mainnet"
+      ? arbitrumMainnetConfig
+      : arbitrumSepoliaConfig;
+  const rpcUrl =
+    getPortfolioChainFromEnv() === "mainnet"
+      ? envParsed.RPC_URL_MAINNET || baseConfig.chain.rpcUrls.default.http[0]
+      : envParsed.RPC_URL_SEPOLIA || baseConfig.chain.rpcUrls.default.http[0];
+  return {
+    ...baseConfig,
+    rpcUrl,
   };
 }
 
@@ -79,6 +76,9 @@ export const getShortAddress = (address: string) => {
  * @returns The full explorer URL for the contract address
  */
 export function buildContractExplorerUrl(contractAddress: string): string {
-  const { explorerUrl } = getNetworkConfig();
-  return `${explorerUrl}/address/${contractAddress}`;
+  const { explorerUrl } = getMainnetConfig();
+  const { explorerUrl: sepoliaExplorerUrl } = getSepoliaConfig();
+  const isSepolia = getPortfolioChainFromEnv() === "sepolia";
+  const baseExplorerUrl = isSepolia ? sepoliaExplorerUrl : explorerUrl;
+  return `${baseExplorerUrl}/address/${contractAddress}`;
 }
