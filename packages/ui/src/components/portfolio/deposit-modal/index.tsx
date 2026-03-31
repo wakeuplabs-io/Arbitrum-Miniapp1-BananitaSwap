@@ -5,7 +5,6 @@ import { SwipeButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { DepositModalHeader } from './deposit-modal-header'
 import { DepositAmountDisplay } from './deposit-amount-display'
-import { useMockTokenState } from '@/contexts/mock-token-state'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { TokenName } from '@lemoncash/mini-app-sdk'
 
@@ -15,11 +14,9 @@ type DepositModalProps = {
 
 export function DepositModal({ onClose }: DepositModalProps) {
 	const [amount, setAmount] = useState('')
-	const [showSuccess, setShowSuccess] = useState(false)
 	const [showLemonRequested, setShowLemonRequested] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const { isMocking, deposit: mockDeposit } = useMockTokenState()
 	const { handleDeposit, isInLemonWebView } = useLemonMiniapp()
 
 	const quickAmounts = [25, 50, 100]
@@ -49,17 +46,12 @@ export function DepositModal({ onClose }: DepositModalProps) {
 		setError(null)
 
 		try {
-			if (isMocking) {
-				await mockDeposit(numericValue, 'USDC')
-				setShowSuccess(true)
-			} else {
-				if (!isInLemonWebView) {
-					setError('Please open this app in Lemon Cash to deposit')
-					return
-				}
-				await handleDeposit(amount, TokenName.USDC)
-				setShowLemonRequested(true)
+			if (!isInLemonWebView) {
+				setError('Please open this app in Lemon Cash to deposit')
+				return
 			}
+			await handleDeposit(amount, TokenName.USDC)
+			setShowLemonRequested(true)
 		} catch (err) {
 			const errorMessage =
 				err instanceof Error ? err.message : 'Deposit failed. Please try again.'
@@ -68,27 +60,6 @@ export function DepositModal({ onClose }: DepositModalProps) {
 		} finally {
 			setIsProcessing(false)
 		}
-	}
-
-	if (showSuccess) {
-		return (
-			<Dialog open onOpenChange={(open) => !open && onClose()}>
-				<DialogContent fullScreen showCloseButton={false} className="flex flex-col overflow-hidden p-0">
-					<DialogTitle className="sr-only">Deposit successful!</DialogTitle>
-					<DialogDescription className="sr-only">
-						Your funds have been added to your account.
-					</DialogDescription>
-					<SuccessScreen
-						title="Deposit successful!"
-						message="Your funds have been added to your account."
-						onDismiss={onClose}
-						buttonLabel="Done"
-						imageSrc="/success-deposit-monkey.webp"
-						imageAlt="Monkey depositing coin into pouch"
-					/>
-				</DialogContent>
-			</Dialog>
-		)
 	}
 
 	if (showLemonRequested) {
