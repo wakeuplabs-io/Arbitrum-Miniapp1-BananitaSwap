@@ -1,5 +1,4 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { TokenControlPanel } from "@/components/portfolio/token-control-panel";
 
 function RootComponent() {
 	return (
@@ -21,7 +20,6 @@ function RootComponent() {
 						aria-hidden
 					/>
 				</main>
-				<TokenControlPanel />
 			</div>
 		</div>
 	)

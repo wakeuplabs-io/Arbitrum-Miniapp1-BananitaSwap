@@ -1,6 +1,5 @@
 import { useMemo, useCallback } from 'react'
 import type { Token } from '@/lib/tokens'
-import { useMockTokenState } from '@/contexts/mock-token-state'
 import {
     ARBITRUM_MAINNET_USDC_ADDRESS,
     ARBITRUM_SEPOLIA_USDC_ADDRESS,
@@ -68,25 +67,12 @@ function useRawUserHoldings(chain?: PortfolioChain) {
  * @param chain - Use 'mainnet' for DexScreener context (token listing, swap). Use 'sepolia' for portfolio (withdraw, deposit, view tokens). Omit to infer from NETWORK_BY_ENV.
  */
 export function useUserHoldings(chain?: PortfolioChain) {
-    const { holdings: rawUserHoldings, isLoading: isLoadingOwnedTokens } = useRawUserHoldings(chain)
-    let mockHoldings: TokenHolding[] | null = null
-    try {
-        const mockState = useMockTokenState()
-        mockHoldings = mockState.mockHoldings
-    } catch {
-        // Provider not available
-    }
+    const { holdings: rawUserHoldings, isLoading } = useRawUserHoldings(chain)
 
     // Memoize holdings to ensure stable reference and filter out tokens with 0 amount
-    // Priority: Use mock holdings if available (they contain wallet tokens that can be edited)
-    // Otherwise, use real holdings
     const holdings = useMemo(() => {
-        const allHoldings = mockHoldings ?? rawUserHoldings
-        return allHoldings.filter((h) => h.amount > 0)
-    }, [mockHoldings, rawUserHoldings])
-
-    // Loading state: true if we're loading owned tokens and not using mock data
-    const isLoading = mockHoldings === null && isLoadingOwnedTokens
+        return rawUserHoldings.filter((h) => h.amount > 0)
+    }, [rawUserHoldings])
 
     // Memoize computed values
     const nonUsdcHoldings = useMemo(() => {
@@ -135,9 +121,10 @@ export function useUserHoldings(chain?: PortfolioChain) {
         return holdings.find((h) => h.token.symbol === symbol)?.amount ?? fallback ?? 0
     }, [holdings])
 
-    const getUsdcBalance = useCallback((): number => {
+    const getUsdcBalance = useCallback((): number | null => {
+        if (isLoading) return null
         return getTokenBalance('USDC')
-    }, [getTokenBalance])
+    }, [getTokenBalance, isLoading])
 
     const getHoldingsKey = useCallback((): string => {
         return holdings.map((h) => `${h.token.symbol}:${h.amount}`).join(',')
