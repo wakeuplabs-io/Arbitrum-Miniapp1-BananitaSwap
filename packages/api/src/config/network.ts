@@ -11,26 +11,21 @@ export type NetworkConfig = {
 
 const arbitrumMainnetConfig: NetworkConfig = {
 	chain: arbitrum,
-	rpcUrl: "",
+	rpcUrl: env.MAINNET_RPC_URL,
 	explorerUrl: "https://arbiscan.io",
 }
 
 const arbitrumSepoliaConfig: NetworkConfig = {
 	chain: arbitrumSepolia,
-	rpcUrl: "",
+	rpcUrl: env.SEPOLIA_RPC_URL,
 	explorerUrl: "https://sepolia.arbiscan.io",
-}
-
-const NETWORK_BY_ENV: Record<string, NetworkConfig> = {
-	development: arbitrumSepoliaConfig,
-	staging: arbitrumSepoliaConfig,
-	production: arbitrumMainnetConfig,
 }
 
 /** App chain: Sepolia for dev/staging, mainnet for production. */
 export function getNetworkConfig(): NetworkConfig {
-	const base = NETWORK_BY_ENV[env.NODE_ENV]
-	const rpcUrl = base.chain.id === arbitrum.id ? env.MAINNET_RPC_URL : env.SEPOLIA_RPC_URL
+	const isTestnet = env.IS_TESTNET
+	const base = isTestnet ? arbitrumSepoliaConfig : arbitrumMainnetConfig
+	const rpcUrl = isTestnet ? arbitrumSepoliaConfig.rpcUrl : arbitrumMainnetConfig.rpcUrl
 	return {
 		...base,
 		rpcUrl,
