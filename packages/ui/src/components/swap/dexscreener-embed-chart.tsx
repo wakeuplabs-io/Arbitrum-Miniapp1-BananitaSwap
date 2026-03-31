@@ -16,7 +16,7 @@ export function DexScreenerEmbedChart({
     timeRange = '1D',
 }: DexScreenerEmbedChartProps) {
     const embedUrl = useMemo(() => {
-        if (!token?.pairAddress || !token?.chainId) {
+        if (!token?.chainId || (!token?.address && !token?.pairAddress)) {
             return null
         }
 
@@ -33,8 +33,10 @@ export function DexScreenerEmbedChart({
 
         const chain = chainMap[chainId] || chainId
 
-        // Build DexScreener embed URL
-        const url = new URL(`https://dexscreener.com/${chain}/${token.pairAddress}`)
+        // Prefer token page to avoid base/quote orientation issues in some USDC pools.
+        // Fallback to pair page when token address is unavailable.
+        const pathTarget = token.address ?? token.pairAddress
+        const url = new URL(`https://dexscreener.com/${chain}/${pathTarget}`)
         url.searchParams.set('embed', '1')
         url.searchParams.set('loadChartSettings', '0')
         url.searchParams.set('trades', '0')
@@ -49,13 +51,13 @@ export function DexScreenerEmbedChart({
         url.searchParams.set('interval', timeRange)
 
         return url.toString()
-    }, [token?.pairAddress, token?.chainId, timeRange])
+    }, [token?.address, token?.pairAddress, token?.chainId, timeRange])
 
     if (!embedUrl) {
         return (
             <div className="w-full h-40 flex items-center justify-center bg-card rounded-2xl border-2 border-border">
                 <div className="text-sm text-muted-foreground">
-                    {token ? 'Pair address not available for this token' : 'No token selected'}
+                    {token ? 'Token or pair address not available for this token' : 'No token selected'}
                 </div>
             </div>
         )
