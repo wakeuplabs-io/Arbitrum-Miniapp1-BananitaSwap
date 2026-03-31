@@ -101,6 +101,10 @@ export default $config({
         VITE_API_URL: $interpolate`${api.url}`,
         VITE_RPC_URL_SEPOLIA: process.env.RPC_URL_SEPOLIA!,
         VITE_RPC_URL_MAINNET: process.env.RPC_URL_MAINNET!,
+        VITE_IS_TESTNET: process.env.IS_TESTNET ? "true" : "false",
+        VITE_ROUTER_ADDRESS_SEPOLIA: process.env.ROUTER_ADDRESS_SEPOLIA!,
+        VITE_ROUTER_ADDRESS_MAINNET: process.env.ROUTER_ADDRESS_MAINNET!,
+        VITE_PROVIDER_ID: process.env.PROVIDER_ID!,
       },
       assets: {
         textEncoding: "utf-8",
