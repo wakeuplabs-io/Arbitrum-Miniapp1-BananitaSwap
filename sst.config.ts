@@ -104,7 +104,6 @@ export default $config({
         VITE_IS_TESTNET: process.env.IS_TESTNET,
         VITE_ROUTER_ADDRESS_SEPOLIA: process.env.ROUTER_ADDRESS_SEPOLIA!,
         VITE_ROUTER_ADDRESS_MAINNET: process.env.ROUTER_ADDRESS_MAINNET!,
-        VITE_PROVIDER_ID: process.env.PROVIDER_ID!,
       },
       assets: {
         textEncoding: "utf-8",

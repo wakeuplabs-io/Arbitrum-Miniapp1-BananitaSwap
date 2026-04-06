@@ -28,7 +28,7 @@ const querySchema = z.object({
 
 /**
  * GET /tokens
- * Returns USDC-paired tokens on Arbitrum from Camelot v2/v3 + Uniswap v3 subgraphs.
+ * Returns USDC-paired tokens (V3 direct pools only) from Camelot v3 + Uniswap v3 subgraphs, aligned with router USDC and Uniswap fee tier.
  * Query params: camelotOnly, uniswapOnly, allowlist (optional; env TOKENS_APPLY_SWAP_ALLOWLIST when omitted).
  */
 tokensRouter.get('/', zValidator('query', querySchema), async (c) => {

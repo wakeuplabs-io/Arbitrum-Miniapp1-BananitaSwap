@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getTokensInfo, type DexScreenerPair } from '@/services/dexscreener'
-import { fetchTokens, type ApiTokenItem } from '@/services/tokens-api'
+import { fetchTokens, TOKENS_API_USE_ALLOWLIST, type ApiTokenItem } from '@/services/tokens-api'
 import {
     ARBITRUM_MAINNET_USDC_ADDRESS,
     ARBITRUM_SEPOLIA_USDC_ADDRESS,
@@ -58,7 +58,7 @@ function formatMarketCap(tvl: number): string {
 
 /** Convert API token item to Token format (price/liquidity from subgraph via API). change24h optional; undefined = not found. */
 export function apiTokenItemToToken(item: ApiTokenItem, change24h?: number): Token {
-    const { otherToken, poolAddress, priceUsd, totalValueLockedUSD } = item
+    const { otherToken, poolAddress, priceUsd, totalValueLockedUSD, dexId, providerId, venues } = item
     const safePrice = Number.isFinite(priceUsd) && priceUsd >= 0 && priceUsd <= 1e9 ? priceUsd : 0
     return {
         symbol: otherToken.symbol,
@@ -70,6 +70,9 @@ export function apiTokenItemToToken(item: ApiTokenItem, change24h?: number): Tok
         marketCap: formatMarketCap(totalValueLockedUSD),
         address: otherToken.address,
         chainId: 'arbitrum',
+        dexId,
+        providerId,
+        swapVenues: venues ?? [],
         pairAddress: poolAddress ?? undefined,
     }
 }
@@ -112,7 +115,7 @@ export function pairToTokenFromTokenPairs(pair: DexScreenerPair): Token {
 }
 
 /** Shared query key for tokens API – used by useAllTokens and useOwnedTokens. */
-export const TOKENS_QUERY_KEY = ['tokens'] as const
+export const TOKENS_QUERY_KEY = ['tokens', { allowlist: TOKENS_API_USE_ALLOWLIST }] as const
 
 /**
  * Hook to fetch USDC-paired tokens from backend (/tokens API).
