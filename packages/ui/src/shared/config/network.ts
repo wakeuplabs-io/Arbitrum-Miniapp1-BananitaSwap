@@ -11,6 +11,10 @@ export const ARBITRUM_SEPOLIA_USDC_ADDRESS =
 export const ARBITRUM_MAINNET_USDC_ADDRESS =
   "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 
+/** Bridged USDC.e on Arbitrum One (legacy ERC-20) */
+export const ARBITRUM_MAINNET_USDC_E_ADDRESS =
+  "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8";
+
 export type NetworkConfig = {
   chain: Chain;
   rpcUrl?: string;

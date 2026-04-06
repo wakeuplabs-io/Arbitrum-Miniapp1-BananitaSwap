@@ -9,7 +9,6 @@ const env = {
 
   VITE_ROUTER_ADDRESS_SEPOLIA: import.meta.env.VITE_ROUTER_ADDRESS_SEPOLIA,
   VITE_ROUTER_ADDRESS_MAINNET: import.meta.env.VITE_ROUTER_ADDRESS_MAINNET,
-  VITE_PROVIDER_ID: import.meta.env.VITE_PROVIDER_ID,
 };
 
 const parseResult = EnvSchema.safeParse(env);

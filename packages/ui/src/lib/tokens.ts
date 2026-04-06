@@ -1,3 +1,4 @@
+import type { ApiSwapTokenVenue } from '@/services/tokens-api'
 import { getUsdcToken } from "@/hooks/use-tokens"
 
 export type Token = {
@@ -13,6 +14,10 @@ export type Token = {
 	address?: string
 	chainId?: string
 	dexId?: string
+	/** Router adapter id from GET /tokens; omit when token metadata is DexScreener-only. */
+	providerId?: number
+	/** All V3 direct venues returned by API (exactInputSingle-capable). */
+	swapVenues?: ApiSwapTokenVenue[]
 	pairAddress?: string // Pool/pair contract address (for swapping and DexScreener embed)
 }
 

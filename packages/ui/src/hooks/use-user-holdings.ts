@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react'
 import type { Token } from '@/lib/tokens'
 import {
     ARBITRUM_MAINNET_USDC_ADDRESS,
+    ARBITRUM_MAINNET_USDC_E_ADDRESS,
     ARBITRUM_SEPOLIA_USDC_ADDRESS,
     getPortfolioChainFromEnv,
 } from '@/shared/config/network'
@@ -10,6 +11,17 @@ import { useOwnedTokens } from './use-owned-tokens'
 import { getUsdcTokenForChain } from './use-tokens'
 
 export type TokenHolding = { token: Token; amount: number }
+
+function isUsdStableHolding(token: Token): boolean {
+    const sym = token.symbol
+    if (sym === 'USDC' || sym === 'USDC.e') return true
+    const addr = token.address?.toLowerCase()
+    return (
+        addr === ARBITRUM_MAINNET_USDC_ADDRESS.toLowerCase() ||
+        addr === ARBITRUM_MAINNET_USDC_E_ADDRESS.toLowerCase() ||
+        addr === ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
+    )
+}
 
 /**
  * Internal hook to retrieve raw user holdings from owned tokens
@@ -30,6 +42,8 @@ function useRawUserHoldings(chain?: PortfolioChain) {
             resolvedChain === 'mainnet'
                 ? ARBITRUM_MAINNET_USDC_ADDRESS.toLowerCase()
                 : ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
+        const usdcEAddressForLookup =
+            resolvedChain === 'mainnet' ? ARBITRUM_MAINNET_USDC_E_ADDRESS.toLowerCase() : null
 
         // Add all owned tokens (including USDC)
         for (const token of ownedTokensData.tokens) {
@@ -46,13 +60,36 @@ function useRawUserHoldings(chain?: PortfolioChain) {
         const usdcBalance = ownedTokensData.balances.get(usdcAddressForLookup)
         if (usdcBalance && usdcBalance > 0) {
             const hasUsdcInTokens = holdings.some(
-                (h) => h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdcAddressForLookup
+                (h) =>
+                    h.token.symbol === 'USDC' || h.token.address?.toLowerCase() === usdcAddressForLookup
             )
             if (!hasUsdcInTokens) {
                 holdings.push({
                     token: usdcToken,
                     amount: usdcBalance,
                 })
+            }
+        }
+
+        if (usdcEAddressForLookup) {
+            const usdcEBalance = ownedTokensData.balances.get(usdcEAddressForLookup)
+            if (usdcEBalance && usdcEBalance > 0) {
+                const hasUsdcE = holdings.some(
+                    (h) =>
+                        h.token.symbol === 'USDC.e' ||
+                        h.token.address?.toLowerCase() === usdcEAddressForLookup
+                )
+                if (!hasUsdcE) {
+                    holdings.push({
+                        token: {
+                            ...usdcToken,
+                            address: ARBITRUM_MAINNET_USDC_E_ADDRESS,
+                            symbol: 'USDC.e',
+                            name: 'USD Coin (bridged)',
+                        },
+                        amount: usdcEBalance,
+                    })
+                }
             }
         }
 
@@ -74,18 +111,12 @@ export function useUserHoldings(chain?: PortfolioChain) {
         return rawUserHoldings.filter((h) => h.amount > 0)
     }, [rawUserHoldings])
 
-    // Memoize computed values
-    const nonUsdcHoldings = useMemo(() => {
-        return holdings.filter((h) => h.token.symbol !== 'USDC')
-    }, [holdings])
-
     const totalBalanceUsd = useMemo(() => {
         let total = 0
         let usdcBalance = 0
 
         for (const holding of holdings) {
-            if (holding.token.symbol === 'USDC') {
-                // USDC is 1:1 with USD
+            if (isUsdStableHolding(holding.token)) {
                 usdcBalance += holding.amount
             } else if (holding.token.price) {
                 total += holding.amount * holding.token.price
@@ -104,7 +135,7 @@ export function useUserHoldings(chain?: PortfolioChain) {
         let total24hAgo = 0
 
         for (const holding of holdings) {
-            if (holding.token.symbol === 'USDC') {
+            if (isUsdStableHolding(holding.token)) {
                 total24hAgo += holding.amount
             } else if (holding.token.price != null && holding.token.price > 0) {
                 const change24h = holding.token.change24h ?? 0
@@ -118,6 +149,11 @@ export function useUserHoldings(chain?: PortfolioChain) {
     }, [holdings, totalBalanceUsd])
 
     const getTokenBalance = useCallback((symbol: string, fallback?: number): number => {
+        if (symbol === 'USDC') {
+            const stables = holdings.filter((h) => isUsdStableHolding(h.token))
+            if (stables.length === 0) return fallback ?? 0
+            return stables.reduce((sum, h) => sum + h.amount, 0)
+        }
         return holdings.find((h) => h.token.symbol === symbol)?.amount ?? fallback ?? 0
     }, [holdings])
 
@@ -140,7 +176,6 @@ export function useUserHoldings(chain?: PortfolioChain) {
 
     return {
         holdings,
-        nonUsdcHoldings,
         totalBalanceUsd,
         dailyChangePercent,
         isLoading,
