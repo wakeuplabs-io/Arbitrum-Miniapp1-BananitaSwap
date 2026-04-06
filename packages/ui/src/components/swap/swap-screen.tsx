@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -7,9 +8,14 @@ import { SwipeButton } from './swipe-button'
 import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
 import type { Token } from '@/lib/tokens'
 import { getUsdcToken } from '@/hooks/use-tokens'
-import { useUserHoldings } from '@/hooks/use-user-holdings'
+import { useErc20BalanceOnChain, useUsdcBalance } from '@/hooks/use-swap-chain-balances'
 import { useRouterSwap } from '@/hooks/use-router-swap'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
+import {
+	getSwapAmountFormatError,
+	parseSwapAmountToNumber,
+	sanitizeSwapAmountInput,
+} from '@/lib/swap-amount-input'
 
 
 type SwapScreenProps = {
@@ -30,9 +36,15 @@ export function SwapScreen({
 	onSwapComplete,
 }: SwapScreenProps) {
 	const navigate = useNavigate()
+	const queryClient = useQueryClient()
 	const usdc = getUsdcToken()
-	const { getUsdcBalance, getTokenBalance, isLoading } = useUserHoldings('mainnet')
-	const { isAuthenticating } = useLemonMiniapp()
+	const { wallet, isAuthenticating } = useLemonMiniapp()
+	const { data: usdcHuman, isLoading: isUsdcBalanceLoading } = useUsdcBalance('mainnet')
+	const sellTokenAddress = direction === 'sell' ? sellToken?.address : undefined
+	const { data: sellTokenHuman, isPending: isSellTokenBalancePending } = useErc20BalanceOnChain(
+		sellTokenAddress,
+		'mainnet'
+	)
 	const { swap: routerSwap, isSwapping, errorMessage } = useRouterSwap()
 	const [amount, setAmount] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
@@ -44,29 +56,59 @@ export function SwapScreen({
 	const bottomToken = direction === 'buy' ? buyToken : usdc
 	const pairToken = direction === 'buy' ? buyToken : sellToken
 
-	// Get USDC balance only
-	const usdcBalance = getUsdcBalance()
-	const isHoldingsLoading = isLoading || isAuthenticating
+	/** Skeleton until Lemon auth finishes or first USDC multicall completes (avoid $0 flash before wallet/RPC). */
+	const isUsdcHeaderLoading = isAuthenticating || (!!wallet && isUsdcBalanceLoading)
+	const usdcBalance = isUsdcHeaderLoading
+		? null
+		: !wallet
+			? 0
+			: (usdcHuman ?? 0)
 
-	// Get balance from mock holdings if available, otherwise use token balance
-	const topBalance = topToken
-		? getTokenBalance(topToken.symbol, topToken.balance)
-		: 0
-	const amountValue = parseFloat(amount) || 0
+	const topBalance = useMemo(() => {
+		if (!topToken) return 0
+		if (topToken.symbol === 'USDC') {
+			if (isUsdcHeaderLoading) return 0
+			return usdcHuman ?? 0
+		}
+		if (!topToken.address) return topToken.balance ?? 0
+		if (isSellTokenBalancePending) return topToken.balance ?? 0
+		return sellTokenHuman ?? 0
+	}, [
+		topToken,
+		usdcHuman,
+		sellTokenHuman,
+		isSellTokenBalancePending,
+		isUsdcHeaderLoading,
+	])
+	const amountFormatError = getSwapAmountFormatError(amount)
+	const amountValue = parseSwapAmountToNumber(amount)
+	const amountIsFinite = Number.isFinite(amountValue)
 
 	const outputValue =
-		topToken && bottomToken && amountValue > 0
+		topToken && bottomToken && amountIsFinite && amountValue > 0
 			? (amountValue * topToken.price) / bottomToken.price
 			: 0
 
-	const exceeds = amountValue > topBalance
+	const exceeds = amountIsFinite && amountValue > topBalance
 	const isValid =
-		amountValue > 0 && !exceeds && topToken !== null && bottomToken !== null
+		amountIsFinite &&
+		amountValue > 0 &&
+		!exceeds &&
+		amountFormatError === null &&
+		topToken !== null &&
+		bottomToken !== null
+
+	/** Input amount is always top-of-stack asset; only reset when that asset or direction changes — not when buy token changes in buy mode. */
+	const amountResetKey = useMemo(() => {
+		if (direction === 'buy') return 'buy:usdc-input'
+		const addr = sellToken?.address?.toLowerCase() ?? ''
+		return `sell:${addr}:${sellToken?.symbol ?? ''}`
+	}, [direction, sellToken?.address, sellToken?.symbol])
 
 	useEffect(() => {
 		setAmount('')
 		setSelectedPercent(null)
-	}, [direction, sellToken, buyToken])
+	}, [amountResetKey])
 
 	useEffect(() => {
 		return () => {
@@ -160,14 +202,14 @@ export function SwapScreen({
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
 						Available USDC
 					</p>
-					{isHoldingsLoading || usdcBalance === null ? (
+					{isUsdcHeaderLoading || usdcBalance === null ? (
 						<div className="h-12 w-32 bg-muted rounded animate-pulse mt-1" aria-hidden />
 					) : (
 						<p className="text-5xl text-foreground mt-1 tracking-tight numeric-balance">
 							${usdcBalance.toFixed(2)}
 						</p>
 					)}
-					{!isHoldingsLoading && usdcBalance === 0 && (
+					{!isUsdcHeaderLoading && usdcBalance !== null && usdcBalance === 0 && (
 						<Button
 							type="button"
 							variant="default"
@@ -229,13 +271,15 @@ export function SwapScreen({
 							<input
 								type="text"
 								inputMode="decimal"
+								autoComplete="off"
+								autoCorrect="off"
+								autoCapitalize="off"
+								spellCheck={false}
+								enterKeyHint="done"
 								value={amount}
 								onChange={(e) => {
-									const v = e.target.value.replace(/[^0-9.,]/g, '')
-									if (v.split('.').length <= 2 && v.split(',').length <= 2) {
-										setAmount(v)
-										setSelectedPercent(null)
-									}
+									setAmount((prev) => sanitizeSwapAmountInput(e.target.value, prev))
+									setSelectedPercent(null)
 								}}
 								onFocus={() => setIsFocused(true)}
 								onBlur={() => setIsFocused(false)}
@@ -293,12 +337,14 @@ export function SwapScreen({
 
 						<div className="flex items-center justify-between mt-2">
 							<span
-								className={`text-xs numeric ${exceeds ? 'text-destructive font-medium' : 'text-muted-foreground'
+								className={`text-xs numeric ${amountFormatError || exceeds ? 'text-destructive font-medium' : 'text-muted-foreground'
 									}`}
 							>
-								{exceeds
-									? 'Exceeds balance'
-									: formatFiat(amountValue * (topToken?.price ?? 0))}
+								{amountFormatError
+									? amountFormatError
+									: exceeds
+										? 'Exceeds balance'
+										: formatFiat(amountValue * (topToken?.price ?? 0))}
 							</span>
 							<span className="text-xs numeric text-muted-foreground">
 								{topBalance.toFixed(4)} {topToken?.symbol ?? ''}
@@ -398,7 +444,7 @@ export function SwapScreen({
 									? formatFiat(outputValue * bottomToken.price)
 									: '0 US$'}
 							</span>
-							{bottomToken && amountValue > 0 && (
+							{bottomToken && amountIsFinite && amountValue > 0 && (
 								<span className="text-xs text-muted-foreground">
 									1 {topToken?.symbol} ≈ {formatOutputAmount((topToken?.price ?? 0) / bottomToken.price)} {bottomToken.symbol}
 								</span>
@@ -426,7 +472,7 @@ export function SwapScreen({
 					label={swipeLabel}
 					disabled={!isValid || isProcessing || isSwapping}
 					onSwipeComplete={async () => {
-						if (!topToken || !bottomToken || amountValue <= 0) {
+						if (!topToken || !bottomToken || !amountIsFinite || amountValue <= 0 || amountFormatError) {
 							onSwapComplete()
 							return
 						}
@@ -457,6 +503,12 @@ export function SwapScreen({
 									expectedOutHuman: outputValue,
 								})
 							}
+
+							await Promise.all([
+								queryClient.invalidateQueries({ queryKey: ['usdc-balance'], refetchType: 'all' }),
+								queryClient.invalidateQueries({ queryKey: ['owned-tokens'], refetchType: 'all' }),
+								queryClient.invalidateQueries({ queryKey: ['erc20-balance'], refetchType: 'all' }),
+							])
 
 							onSwapComplete()
 						} catch (err) {

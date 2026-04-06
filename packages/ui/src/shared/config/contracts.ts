@@ -12,6 +12,7 @@ export const routerAbi = parseAbi([
 	// Minimal read helpers (useful for validating config in the future)
 	'function getUsdc() view returns (address)',
 	'function getFeeBps() view returns (uint256)',
+	'function getAdapter(uint8 id) view returns (address)',
 ])
 
 type EnvContractConfig = {

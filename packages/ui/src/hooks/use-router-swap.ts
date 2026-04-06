@@ -34,6 +34,7 @@ const ERC20_ABI = parseAbi([
 	'function decimals() view returns (uint8)',
 	'function allowance(address owner, address spender) view returns (uint256)',
 ])
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 function getMinOutBaseAmount(outBaseAmount: bigint, slippageBps: number): bigint {
 	if (slippageBps < 0 || slippageBps >= 10000) {
@@ -46,6 +47,23 @@ function getMinOutBaseAmount(outBaseAmount: bigint, slippageBps: number): bigint
 
 function getDeadline(deadlineSeconds: number): bigint {
 	return BigInt(Math.floor(Date.now() / 1000) + deadlineSeconds)
+}
+
+function toNonExponentialDecimal(value: number, maxDecimals: number): string {
+	if (!Number.isFinite(value) || value <= 0) {
+		throw new Error(`Invalid amount value: ${value}`)
+	}
+	const safeMaxDecimals = Math.max(0, Math.min(maxDecimals, 18))
+	const fixed = value.toFixed(safeMaxDecimals)
+	return fixed.replace(/\.?0+$/, '')
+}
+
+function normalizeTokenDecimals(rawDecimals: number, tokenLabel: string): number {
+	if (!Number.isInteger(rawDecimals) || rawDecimals < 0 || rawDecimals > 36) {
+		throw new Error(`Invalid decimals for ${tokenLabel}: ${rawDecimals}`)
+	}
+
+	return rawDecimals
 }
 
 export function useRouterSwap() {
@@ -66,6 +84,10 @@ export function useRouterSwap() {
 				const providerId = params.providerId ?? getDefaultProviderId()
 				const deadlineSeconds = params.deadlineSeconds ?? 1200
 
+				if (!Number.isFinite(amountInHuman) || !Number.isFinite(expectedOutHuman)) {
+					throw new Error('Invalid swap amounts')
+				}
+
 				if (amountInHuman <= 0 || expectedOutHuman <= 0) {
 					throw new Error('Invalid swap amounts')
 				}
@@ -83,9 +105,22 @@ export function useRouterSwap() {
 					functionName: 'getUsdc',
 				})
 
-				console.log('[swap] usdcAddress', usdcAddress)
+				const adapterAddress = await publicClient.readContract({
+					address: routerAddress,
+					abi: routerAbi,
+					functionName: 'getAdapter',
+					args: [providerId],
+				})
 
-				const [usdcDecimals, tokenDecimals] = await Promise.all([
+				if (adapterAddress.toLowerCase() === ZERO_ADDRESS) {
+					throw new Error(
+						`Provider ${providerId} has no adapter configured in router ${routerAddress}. Check VITE_PROVIDER_ID/deployment.`
+					)
+				}
+
+				console.log('[swap] addresses', { usdcAddress, adapterAddress })
+
+				const [usdcDecimalsRaw, tokenDecimalsRaw] = await Promise.all([
 					publicClient.readContract({
 						address: usdcAddress,
 						abi: ERC20_ABI,
@@ -97,6 +132,8 @@ export function useRouterSwap() {
 						functionName: 'decimals',
 					}),
 				])
+				const usdcDecimals = normalizeTokenDecimals(Number(usdcDecimalsRaw), 'USDC')
+				const tokenDecimals = normalizeTokenDecimals(Number(tokenDecimalsRaw), tokenAddress)
 
 				console.log('[swap] decimals', { usdcDecimals, tokenDecimals })
 
@@ -106,8 +143,14 @@ export function useRouterSwap() {
 				const contracts: Parameters<typeof callSmartContract>[0]['contracts'] = []
 
 				if (direction === 'buy') {
-					const usdcAmountBase = parseUnits(amountInHuman.toString(), Number(usdcDecimals))
-					const expectedTokenOutBase = parseUnits(expectedOutHuman.toString(), Number(tokenDecimals))
+					const usdcAmountBase = parseUnits(
+						toNonExponentialDecimal(amountInHuman, usdcDecimals),
+						usdcDecimals
+					)
+					const expectedTokenOutBase = parseUnits(
+						toNonExponentialDecimal(expectedOutHuman, tokenDecimals),
+						tokenDecimals
+					)
 					const minTokenOutBase = getMinOutBaseAmount(expectedTokenOutBase, slippageBps)
 					const deadline = getDeadline(deadlineSeconds)
 
@@ -151,8 +194,14 @@ export function useRouterSwap() {
 						chainId,
 					})
 				} else {
-					const tokenAmountBase = parseUnits(amountInHuman.toString(), Number(tokenDecimals))
-					const expectedUsdcOutBase = parseUnits(expectedOutHuman.toString(), Number(usdcDecimals))
+					const tokenAmountBase = parseUnits(
+						toNonExponentialDecimal(amountInHuman, tokenDecimals),
+						tokenDecimals
+					)
+					const expectedUsdcOutBase = parseUnits(
+						toNonExponentialDecimal(expectedOutHuman, usdcDecimals),
+						usdcDecimals
+					)
 					const minUsdcOutBase = getMinOutBaseAmount(expectedUsdcOutBase, slippageBps)
 					const deadline = getDeadline(deadlineSeconds)
 
