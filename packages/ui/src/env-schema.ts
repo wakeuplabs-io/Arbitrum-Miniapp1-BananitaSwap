@@ -29,16 +29,6 @@ export const EnvSchema = z
       .refine((v) => v === undefined || isAddress(v), {
         message: "VITE_ROUTER_ADDRESS_MAINNET must be a valid address",
       }),
-
-    // Router swap provider selector (uint8)
-    VITE_PROVIDER_ID: z
-      .string()
-      .optional()
-      .refine((v) => {
-        if (v === undefined) return true
-        const n = Number(v)
-        return Number.isInteger(n) && n >= 0 && n <= 255
-      }, "VITE_PROVIDER_ID must be a uint8 (0-255)"),
   });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -1,4 +1,5 @@
 import envParsed from '@/env-parsed'
+import { ROUTER_PROVIDER_ID_DEFAULT } from './router-provider-ids'
 import { getPortfolioChainFromEnv, type PortfolioChain } from './network'
 import { getAddress, isAddress, parseAbi, type Address } from 'viem'
 
@@ -18,7 +19,6 @@ export const routerAbi = parseAbi([
 type EnvContractConfig = {
 	VITE_ROUTER_ADDRESS_SEPOLIA?: string
 	VITE_ROUTER_ADDRESS_MAINNET?: string
-	VITE_PROVIDER_ID?: string
 }
 
 function getContractEnv(): EnvContractConfig {
@@ -37,17 +37,6 @@ function parseEnvAddress(raw: string | undefined, label: string): Address {
 	return getAddress(raw)
 }
 
-function parseProviderId(raw: string | undefined, defaultValue: number): number {
-	if (!raw) return defaultValue
-	const n = Number(raw)
-
-	if (!Number.isInteger(n) || n < 0 || n > 255) {
-		throw new Error(`Invalid VITE_PROVIDER_ID. Expected uint8 (0-255), got: ${raw}`)
-	}
-
-	return n
-}
-
 export function getActiveChainKey(): ChainKey {
 	return getPortfolioChainFromEnv()
 }
@@ -62,8 +51,6 @@ export function getRouterAddressByNetwork(network: ChainKey): Address {
 }
 
 export function getDefaultProviderId(): number {
-	const { VITE_PROVIDER_ID } = getContractEnv()
-	// Your scripts default to PROVIDER_ID=2
-	return parseProviderId(VITE_PROVIDER_ID, 2)
+	return ROUTER_PROVIDER_ID_DEFAULT
 }
 

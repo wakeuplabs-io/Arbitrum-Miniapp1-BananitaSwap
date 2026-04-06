@@ -69,7 +69,6 @@ jobs:
           IS_TESTNET: ${{ vars.IS_TESTNET }}
           ROUTER_ADDRESS_SEPOLIA: ${{ vars.ROUTER_ADDRESS_SEPOLIA }}
           ROUTER_ADDRESS_MAINNET: ${{ vars.ROUTER_ADDRESS_MAINNET }}
-          PROVIDER_ID: ${{ vars.PROVIDER_ID }}
 
       - name: Save Outputs
         id: save-outputs

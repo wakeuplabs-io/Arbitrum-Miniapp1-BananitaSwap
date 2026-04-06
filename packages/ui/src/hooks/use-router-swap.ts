@@ -4,6 +4,7 @@ import { callSmartContract, ChainId, TransactionResult } from '@lemoncash/mini-a
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { getNetworkConfig } from '@/shared/config/network'
 import { publicClient } from '@/shared/config/viem'
+import { resolveRouterProviderId } from '@/lib/resolve-router-provider'
 import { routerAbi, getActiveChainKey, getDefaultProviderId, getRouterAddressByNetwork } from '@/shared/config/contracts'
 
 type RouterSwapDirection = 'buy' | 'sell'
@@ -34,8 +35,6 @@ const ERC20_ABI = parseAbi([
 	'function decimals() view returns (uint8)',
 	'function allowance(address owner, address spender) view returns (uint256)',
 ])
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-
 function getMinOutBaseAmount(outBaseAmount: bigint, slippageBps: number): bigint {
 	if (slippageBps < 0 || slippageBps >= 10000) {
 		throw new Error(`Invalid slippageBps: ${slippageBps}`)
@@ -81,7 +80,7 @@ export function useRouterSwap() {
 
 				const { direction, tokenAddress, amountInHuman, expectedOutHuman } = params
 				const slippageBps = params.slippageBps ?? 50
-				const providerId = params.providerId ?? getDefaultProviderId()
+				const preferredProviderId = params.providerId ?? getDefaultProviderId()
 				const deadlineSeconds = params.deadlineSeconds ?? 1200
 
 				if (!Number.isFinite(amountInHuman) || !Number.isFinite(expectedOutHuman)) {
@@ -97,26 +96,36 @@ export function useRouterSwap() {
 				const chainId = getNetworkConfig().chain.id as ChainId
 				const signerAccount = wallet.toLowerCase() as Address
 
-				console.log('[swap] network', { networkKey, routerAddress, chainId, signerAccount, providerId, slippageBps })
+				const { providerId, adapterAddress } = await resolveRouterProviderId(
+					publicClient,
+					routerAddress,
+					preferredProviderId
+				)
+				if (providerId !== preferredProviderId) {
+					console.warn(
+						'[swap] Preferred provider',
+						preferredProviderId,
+						'has no adapter; using',
+						providerId,
+						'instead'
+					)
+				}
+
+				console.log('[swap] network', {
+					networkKey,
+					routerAddress,
+					chainId,
+					signerAccount,
+					preferredProviderId,
+					providerId,
+					slippageBps,
+				})
 
 				const usdcAddress = await publicClient.readContract({
 					address: routerAddress,
 					abi: routerAbi,
 					functionName: 'getUsdc',
 				})
-
-				const adapterAddress = await publicClient.readContract({
-					address: routerAddress,
-					abi: routerAbi,
-					functionName: 'getAdapter',
-					args: [providerId],
-				})
-
-				if (adapterAddress.toLowerCase() === ZERO_ADDRESS) {
-					throw new Error(
-						`Provider ${providerId} has no adapter configured in router ${routerAddress}. Check VITE_PROVIDER_ID/deployment.`
-					)
-				}
 
 				console.log('[swap] addresses', { usdcAddress, adapterAddress })
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,10 @@ import { getUsdcToken } from '@/hooks/use-tokens'
 import { useErc20BalanceOnChain, useUsdcBalance } from '@/hooks/use-swap-chain-balances'
 import { useRouterSwap } from '@/hooks/use-router-swap'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
+import { resolveRouterProviderId } from '@/lib/resolve-router-provider'
+import { getActiveChainKey, getDefaultProviderId, getRouterAddressByNetwork } from '@/shared/config/contracts'
+import { publicClient } from '@/shared/config/viem'
+import { routerProviderLabel } from '@/shared/config/router-provider-ids'
 import {
 	getSwapAmountFormatError,
 	parseSwapAmountToNumber,
@@ -55,6 +59,31 @@ export function SwapScreen({
 	const topToken = direction === 'buy' ? usdc : sellToken
 	const bottomToken = direction === 'buy' ? buyToken : usdc
 	const pairToken = direction === 'buy' ? buyToken : sellToken
+	const preferredSwapProviderId = useMemo(() => {
+		if (!pairToken) return null
+		return pairToken.providerId ?? getDefaultProviderId()
+	}, [pairToken])
+
+	const routerAddress = useMemo(() => getRouterAddressByNetwork(getActiveChainKey()), [])
+
+	const { data: resolvedSwapProvider } = useQuery({
+		queryKey: ['router-swap-provider', routerAddress, preferredSwapProviderId],
+		queryFn: () =>
+			resolveRouterProviderId(publicClient, routerAddress, preferredSwapProviderId!),
+		enabled: preferredSwapProviderId !== null,
+		staleTime: 60_000,
+	})
+
+	const swapProviderDisplayName =
+		preferredSwapProviderId !== null
+			? routerProviderLabel(resolvedSwapProvider?.providerId ?? preferredSwapProviderId)
+			: null
+	const swapUsesTokenListFallback = Boolean(pairToken && pairToken.providerId === undefined)
+	const swapAdapterDiffersFromPreferred = Boolean(
+		resolvedSwapProvider &&
+			preferredSwapProviderId !== null &&
+			resolvedSwapProvider.providerId !== preferredSwapProviderId
+	)
 
 	/** Skeleton until Lemon auth finishes or first USDC multicall completes (avoid $0 flash before wallet/RPC). */
 	const isUsdcHeaderLoading = isAuthenticating || (!!wallet && isUsdcBalanceLoading)
@@ -463,6 +492,21 @@ export function SwapScreen({
 			</div>
 
 			<div className="fixed bottom-16 left-0 right-0 px-4 pt-3 pb-4 bg-[#FFFFFF] max-w-[430px] mx-auto z-30">
+				{swapProviderDisplayName && (
+					<p className="text-xs text-center text-muted-foreground mb-2" aria-live="polite">
+						Swap provider:{' '}
+						<span className="font-medium text-foreground">{swapProviderDisplayName}</span>
+						{swapUsesTokenListFallback && (
+							<span className="text-muted-foreground"> (default)</span>
+						)}
+						{swapAdapterDiffersFromPreferred && preferredSwapProviderId !== null && (
+							<span className="text-muted-foreground">
+								{' '}
+								(listed {routerProviderLabel(preferredSwapProviderId)} — using available adapter)
+							</span>
+						)}
+					</p>
+				)}
 				{errorMessage && (
 					<p className="text-xs text-destructive text-center mb-2" role="alert">
 						{errorMessage}
@@ -490,6 +534,7 @@ export function SwapScreen({
 									tokenAddress: bottomToken.address as `0x${string}`,
 									amountInHuman: amountValue,
 									expectedOutHuman: outputValue,
+									providerId: pairToken?.providerId ?? getDefaultProviderId(),
 								})
 							} else {
 								if (!topToken.address) {
@@ -501,6 +546,7 @@ export function SwapScreen({
 									tokenAddress: topToken.address as `0x${string}`,
 									amountInHuman: amountValue,
 									expectedOutHuman: outputValue,
+									providerId: pairToken?.providerId ?? getDefaultProviderId(),
 								})
 							}
 
