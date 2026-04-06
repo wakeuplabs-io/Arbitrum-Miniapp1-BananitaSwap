@@ -92,7 +92,12 @@ export function SwipeButton({
 					? 'bg-muted cursor-not-allowed border-0 outline-none'
 					: 'bg-[#FFF1BF] cursor-grab border-0 outline-none active:cursor-grabbing swipe-ready'
 				}`}
-			style={{ touchAction: 'pan-y' }}
+			style={{ touchAction: 'none', overscrollBehaviorX: 'contain' }}
+			onTouchStart={(e) => {
+				if (!disabled && e.cancelable) {
+					e.preventDefault()
+				}
+			}}
 			onMouseMove={(e) => handleMove(e.clientX)}
 			onMouseUp={handleEnd}
 			onMouseLeave={handleEnd}

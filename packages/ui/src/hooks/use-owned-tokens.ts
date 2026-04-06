@@ -5,6 +5,7 @@ import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import { formatUnits, parseAbi, parseAbiItem, type Address } from 'viem'
 import {
     ARBITRUM_MAINNET_USDC_ADDRESS,
+    ARBITRUM_MAINNET_USDC_E_ADDRESS,
     ARBITRUM_SEPOLIA_USDC_ADDRESS,
 } from '@/shared/config/network'
 import type { PortfolioChain } from '@/shared/config/network'
@@ -21,6 +22,7 @@ import type { ApiTokenItem } from '@/services/tokens-api'
 
 const SEPOLIA_USDC_LOWER = ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
 const MAINNET_USDC_LOWER = ARBITRUM_MAINNET_USDC_ADDRESS.toLowerCase()
+const MAINNET_USDC_E_LOWER = ARBITRUM_MAINNET_USDC_E_ADDRESS.toLowerCase()
 /** Native USDC on Arbitrum mainnet (0xaf88d065e77c8cc2239327c5edb3a432268e5831) */
 const MAINNET_USDC_NATIVE_LOWER = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 
@@ -55,6 +57,7 @@ async function fetchBalancesFromApiTokens(
     const addressesToCheck = [
         MAINNET_USDC_LOWER,
         MAINNET_USDC_NATIVE_LOWER,
+        MAINNET_USDC_E_LOWER,
         ...apiTokens.slice(0, MAINNET_BALANCE_CHECK_LIMIT).map((t) => t.otherToken.address.toLowerCase()),
     ]
     const uniqueAddresses = [...new Set(addressesToCheck)]
@@ -192,6 +195,7 @@ async function buildTokensByAddress(
             addr !== SEPOLIA_USDC_LOWER &&
             addr !== MAINNET_USDC_LOWER &&
             addr !== MAINNET_USDC_NATIVE_LOWER &&
+            addr !== MAINNET_USDC_E_LOWER &&
             !apiTokenByAddress.has(addr)
     )
     const uniqueNotInApi = [...new Set(addressesNotInApi)]
@@ -224,6 +228,14 @@ async function buildTokensByAddress(
     }
     if (balanceMap.has(MAINNET_USDC_NATIVE_LOWER)) {
         tokensByAddress.set(MAINNET_USDC_NATIVE_LOWER, { ...usdcMainnet, address: MAINNET_USDC_NATIVE_LOWER })
+    }
+    if (balanceMap.has(MAINNET_USDC_E_LOWER)) {
+        tokensByAddress.set(MAINNET_USDC_E_LOWER, {
+            ...usdcMainnet,
+            address: ARBITRUM_MAINNET_USDC_E_ADDRESS,
+            symbol: 'USDC.e',
+            name: 'USD Coin (bridged)',
+        })
     }
 
     return tokensByAddress
@@ -279,7 +291,7 @@ export function useOwnedTokens(chain: PortfolioChain = 'mainnet') {
 
                 // Enrich with 24h price change from DexScreener (mainnet only)
                 const addressesForChange24h = ownedTokenAddresses.map((a) =>
-                    a === SEPOLIA_USDC_LOWER ? MAINNET_USDC_LOWER : a
+                    a === SEPOLIA_USDC_LOWER || a === MAINNET_USDC_E_LOWER ? MAINNET_USDC_LOWER : a
                 )
                 const uniqueForChange24h = [...new Set(addressesForChange24h)]
                 if (uniqueForChange24h.length > 0) {
@@ -292,6 +304,8 @@ export function useOwnedTokens(chain: PortfolioChain = 'mainnet') {
                             if (addr === MAINNET_USDC_LOWER) {
                                 const sepToken = tokensByAddress.get(SEPOLIA_USDC_LOWER)
                                 if (sepToken) sepToken.change24h = info.priceChange24h
+                                const usdceToken = tokensByAddress.get(MAINNET_USDC_E_LOWER)
+                                if (usdceToken) usdceToken.change24h = info.priceChange24h
                             }
                         }
                     } catch (error) {

@@ -15,9 +15,15 @@ type TokenListItemProps = {
 	onSellToken: (token: Token) => void
 }
 
+function unitUsdPriceForHolding(token: Token): number {
+	if (token.symbol === 'USDC' || token.symbol === 'USDC.e') return 1
+	const p = token.price
+	return Number.isFinite(p) && p > 0 ? p : 0
+}
+
 export function TokenListItem({ holding, onBuyToken, onSellToken }: TokenListItemProps) {
 	const navigate = useNavigate()
-	const usdValue = holding.amount * holding.token.price
+	const usdValue = holding.amount * unitUsdPriceForHolding(holding.token)
 
 	function handleClick() {
 		navigate({
