@@ -32,7 +32,7 @@ export function PortfolioScreen({
 	onBuyToken,
 }: PortfolioScreenProps) {
 	const { portfolioChain } = usePortfolioChain()
-	const { nonUsdcHoldings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
+	const { holdings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
 		useUserHoldings(portfolioChain)
 	const profile = useUserProfile()
 	const { lemonTag, isAuthenticating } = useLemonMiniapp()
@@ -65,13 +65,13 @@ export function PortfolioScreen({
 
 				{isLoading || isAuthenticating ? (
 					<TokenListSkeleton />
-				) : nonUsdcHoldings.length === 0 ? (
+				) : holdings.length === 0 ? (
 					<TokensEmptyState onBuyNow={onOpenSwap} />
 				) : (
 					<div className="flex flex-col gap-4 stagger-slide-up min-w-0">
-						{nonUsdcHoldings.map((holding) => (
+						{holdings.map((holding) => (
 							<TokenListItem
-								key={holding.token.symbol}
+								key={holding.token.address ?? holding.token.symbol}
 								holding={holding}
 								onBuyToken={onBuyToken}
 								onSellToken={onSellToken}
