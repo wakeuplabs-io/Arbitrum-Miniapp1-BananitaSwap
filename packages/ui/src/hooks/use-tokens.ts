@@ -56,18 +56,30 @@ function formatMarketCap(tvl: number): string {
     return `$${Math.round(tvl)}`
 }
 
-/** Convert API token item to Token format (price/liquidity from subgraph via API). change24h optional; undefined = not found. */
-export function apiTokenItemToToken(item: ApiTokenItem, change24h?: number): Token {
+type TokenMarketData = {
+    change24h?: number
+    marketCap?: number
+    fdv?: number
+}
+
+/** Convert API token item to Token format. Prefers real market cap from DexScreener when available. */
+export function apiTokenItemToToken(item: ApiTokenItem, marketData?: TokenMarketData): Token {
     const { otherToken, poolAddress, priceUsd, totalValueLockedUSD, dexId, providerId, venues } = item
     const safePrice = Number.isFinite(priceUsd) && priceUsd >= 0 && priceUsd <= 1e9 ? priceUsd : 0
+    const marketCapValue =
+        (marketData?.marketCap && marketData.marketCap > 0
+            ? marketData.marketCap
+            : marketData?.fdv && marketData.fdv > 0
+              ? marketData.fdv
+              : totalValueLockedUSD)
     return {
         symbol: otherToken.symbol,
         name: otherToken.name,
         icon: otherToken.symbol.toLowerCase(),
         color: hashColor(otherToken.symbol),
         price: safePrice,
-        change24h,
-        marketCap: formatMarketCap(totalValueLockedUSD),
+        change24h: marketData?.change24h,
+        marketCap: formatMarketCap(marketCapValue),
         address: otherToken.address,
         chainId: 'arbitrum',
         dexId,
@@ -143,14 +155,22 @@ export function useAllTokens() {
         const { tokens } = tokensQuery.data ?? { tokens: [], tokenAddresses: [] }
         if (tokens.length === 0) return undefined
         const change24hMap = new Map<string, number>()
+        const marketCapMap = new Map<string, number>()
+        const fdvMap = new Map<string, number>()
         if (change24hQuery.data) {
             for (const info of change24hQuery.data) {
                 change24hMap.set(info.address.toLowerCase(), info.priceChange24h)
+                marketCapMap.set(info.address.toLowerCase(), info.marketCap)
+                fdvMap.set(info.address.toLowerCase(), info.fdv)
             }
         }
         const result = tokens.map((item) => {
-            const change24h = change24hMap.get(item.otherToken.address.toLowerCase())
-            return apiTokenItemToToken(item, change24h)
+            const tokenAddress = item.otherToken.address.toLowerCase()
+            return apiTokenItemToToken(item, {
+                change24h: change24hMap.get(tokenAddress),
+                marketCap: marketCapMap.get(tokenAddress),
+                fdv: fdvMap.get(tokenAddress),
+            })
         })
         const usdc = getUsdcToken()
         const tokensWithoutUsdc = result.filter((t) => t.symbol !== 'USDC')
