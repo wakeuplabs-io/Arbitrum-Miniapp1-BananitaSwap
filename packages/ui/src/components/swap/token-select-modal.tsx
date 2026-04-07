@@ -150,6 +150,9 @@ export function TokenSelectModal({
 								autoFocus
 							/>
 						</div>
+						<p className="mt-2 px-1 text-xs text-muted-foreground">
+							Asegurate de estar buscando un token de la Red Arbitrum.
+						</p>
 					</div>
 
 					<div className="px-4 pb-3">

@@ -65,6 +65,63 @@ function normalizeTokenDecimals(rawDecimals: number, tokenLabel: string): number
 	return rawDecimals
 }
 
+function mapSwapErrorMessage(error: unknown): string {
+	const rawMessage = error instanceof Error ? error.message : String(error)
+	const isTooLittleReceived = /too little received|min_.*out|insufficient output amount/i.test(rawMessage)
+	const isUnexpectedError = /unexpected error|unpected error|unpectected error/i.test(rawMessage)
+	const shouldUseGenericTradeMessage = /ethers|ethjs|execution reverted|call exception/i.test(rawMessage)
+	if (isTooLittleReceived) return 'No pudimos ejecutar tu trade: el precio cambió. Probá con un monto menor.'
+	if (isUnexpectedError) return 'No pudimos ejecutar tu trade'
+	return shouldUseGenericTradeMessage ? 'No podemos ejecutar ese trade ahora' : rawMessage
+}
+
+function isTooLittleReceivedError(error: unknown): boolean {
+	const rawMessage = error instanceof Error ? error.message : String(error)
+	return /too little received|min_.*out|insufficient output amount/i.test(rawMessage)
+}
+
+function getSlippageAttempts(initialSlippageBps: number): number[] {
+	const candidates = [initialSlippageBps, 100, 150, 250, 400]
+	return [...new Set(candidates)].filter((bps) => bps >= initialSlippageBps).sort((a, b) => a - b)
+}
+
+async function executeLemonContracts(
+	contracts: Parameters<typeof callSmartContract>[0]['contracts'],
+	whitelistAddresses: string[]
+): Promise<{ txHash: Hash; receipt: Awaited<ReturnType<typeof publicClient.waitForTransactionReceipt>> }> {
+	console.log('[swap] calling callSmartContract', contracts)
+	const result = await callSmartContract({ contracts })
+	console.log('[swap] callSmartContract result', result)
+
+	if (result.result === TransactionResult.CANCELLED) {
+		throw new Error('Transaction cancelled by user')
+	}
+	if (result.result === TransactionResult.FAILED) {
+		const rawMessage = result.error?.message ?? 'Transaction failed'
+		const isWhitelistError = /whitelist|not allowed|not authorized|contract.*not.*registered|not.*whitelisted/i.test(
+			rawMessage
+		)
+		throw new Error(
+			isWhitelistError
+				? `Contract not whitelisted in Lemon miniapp. Please whitelist: ${whitelistAddresses.join(', ')}`
+				: rawMessage
+		)
+	}
+
+	const txHash = result.data.txHash as Hash
+	console.log('[swap] waiting for receipt', txHash)
+	const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+	console.log('[swap] receipt', receipt)
+
+	if (receipt.status !== 'success') {
+		throw new Error(`Transaction reverted on-chain (status=${receipt.status})`)
+	}
+
+	return { txHash, receipt }
+}
+
+type LemonContractCall = Parameters<typeof callSmartContract>[0]['contracts'][number]
+
 export function useRouterSwap() {
 	const { wallet } = useLemonMiniapp()
 	const [swapState, setSwapState] = useState<RouterSwapState>({ status: 'idle' })
@@ -80,6 +137,7 @@ export function useRouterSwap() {
 
 				const { direction, tokenAddress, amountInHuman, expectedOutHuman } = params
 				const slippageBps = params.slippageBps ?? 50
+				const slippageAttempts = getSlippageAttempts(slippageBps)
 				const preferredProviderId = params.providerId ?? getDefaultProviderId()
 				const deadlineSeconds = params.deadlineSeconds ?? 1200
 
@@ -146,10 +204,8 @@ export function useRouterSwap() {
 
 				console.log('[swap] decimals', { usdcDecimals, tokenDecimals })
 
-				// Build the contracts array for callSmartContract.
-				// If allowance is insufficient, prepend an approve so the user
-				// signs both steps in a single Lemon confirmation dialog.
-				const contracts: Parameters<typeof callSmartContract>[0]['contracts'] = []
+				let approveContract: LemonContractCall | null = null
+				let runSwapSimulation: (() => Promise<LemonContractCall>) | null = null
 
 				if (direction === 'buy') {
 					const usdcAmountBase = parseUnits(
@@ -160,7 +216,6 @@ export function useRouterSwap() {
 						toNonExponentialDecimal(expectedOutHuman, tokenDecimals),
 						tokenDecimals
 					)
-					const minTokenOutBase = getMinOutBaseAmount(expectedTokenOutBase, slippageBps)
 					const deadline = getDeadline(deadlineSeconds)
 
 					const allowance = await publicClient.readContract({
@@ -173,35 +228,55 @@ export function useRouterSwap() {
 					console.log('[swap] buy', {
 						usdcAmountBase: usdcAmountBase.toString(),
 						expectedTokenOutBase: expectedTokenOutBase.toString(),
-						minTokenOutBase: minTokenOutBase.toString(),
+						slippageAttempts,
 						deadline: deadline.toString(),
 						allowance: allowance.toString(),
 						needsApprove: allowance < usdcAmountBase,
 					})
 
+					runSwapSimulation = async () => {
+						let lastError: unknown = null
+						for (const candidateSlippageBps of slippageAttempts) {
+							const candidateMinTokenOutBase = getMinOutBaseAmount(expectedTokenOutBase, candidateSlippageBps)
+							try {
+								await publicClient.simulateContract({
+									address: routerAddress,
+									abi: routerAbi,
+									functionName: 'buy',
+									args: [tokenAddress, usdcAmountBase, candidateMinTokenOutBase, providerId, deadline],
+									account: signerAccount,
+								})
+								return {
+									contractAddress: routerAddress,
+									functionName: 'buy',
+									functionParams: [
+										tokenAddress,
+										usdcAmountBase.toString(),
+										candidateMinTokenOutBase.toString(),
+										providerId,
+										deadline.toString(),
+									],
+									value: '0',
+									chainId,
+								}
+							} catch (error) {
+								lastError = error
+								if (!isTooLittleReceivedError(error)) throw error
+							}
+						}
+						throw lastError ?? new Error('No pudimos ejecutar tu trade')
+					}
+
 					if (allowance < usdcAmountBase) {
-						contracts.push({
+						approveContract = {
 							contractAddress: usdcAddress,
 							functionName: 'approve',
 							functionParams: [routerAddress, usdcAmountBase.toString()],
 							value: '0',
 							chainId,
-						})
+						}
 					}
 
-					contracts.push({
-						contractAddress: routerAddress,
-						functionName: 'buy',
-						functionParams: [
-							tokenAddress,
-							usdcAmountBase.toString(),
-							minTokenOutBase.toString(),
-							providerId,
-							deadline.toString(),
-						],
-						value: '0',
-						chainId,
-					})
 				} else {
 					const tokenAmountBase = parseUnits(
 						toNonExponentialDecimal(amountInHuman, tokenDecimals),
@@ -211,7 +286,6 @@ export function useRouterSwap() {
 						toNonExponentialDecimal(expectedOutHuman, usdcDecimals),
 						usdcDecimals
 					)
-					const minUsdcOutBase = getMinOutBaseAmount(expectedUsdcOutBase, slippageBps)
 					const deadline = getDeadline(deadlineSeconds)
 
 					const allowance = await publicClient.readContract({
@@ -224,73 +298,96 @@ export function useRouterSwap() {
 					console.log('[swap] sell', {
 						tokenAmountBase: tokenAmountBase.toString(),
 						expectedUsdcOutBase: expectedUsdcOutBase.toString(),
-						minUsdcOutBase: minUsdcOutBase.toString(),
+						slippageAttempts,
 						deadline: deadline.toString(),
 						allowance: allowance.toString(),
 						needsApprove: allowance < tokenAmountBase,
 					})
 
+					runSwapSimulation = async () => {
+						let lastError: unknown = null
+						for (const candidateSlippageBps of slippageAttempts) {
+							const candidateMinUsdcOutBase = getMinOutBaseAmount(expectedUsdcOutBase, candidateSlippageBps)
+							try {
+								await publicClient.simulateContract({
+									address: routerAddress,
+									abi: routerAbi,
+									functionName: 'sell',
+									args: [tokenAddress, tokenAmountBase, candidateMinUsdcOutBase, providerId, deadline],
+									account: signerAccount,
+								})
+								return {
+									contractAddress: routerAddress,
+									functionName: 'sell',
+									functionParams: [
+										tokenAddress,
+										tokenAmountBase.toString(),
+										candidateMinUsdcOutBase.toString(),
+										providerId,
+										deadline.toString(),
+									],
+									value: '0',
+									chainId,
+								}
+							} catch (error) {
+								lastError = error
+								if (!isTooLittleReceivedError(error)) throw error
+							}
+						}
+						throw lastError ?? new Error('No pudimos ejecutar tu trade')
+					}
+
 					if (allowance < tokenAmountBase) {
-						contracts.push({
+						approveContract = {
 							contractAddress: tokenAddress,
 							functionName: 'approve',
 							functionParams: [routerAddress, tokenAmountBase.toString()],
 							value: '0',
 							chainId,
-						})
+						}
 					}
 
-					contracts.push({
-						contractAddress: routerAddress,
-						functionName: 'sell',
-						functionParams: [
-							tokenAddress,
-							tokenAmountBase.toString(),
-							minUsdcOutBase.toString(),
-							providerId,
-							deadline.toString(),
-						],
-						value: '0',
-						chainId,
-					})
 				}
 
-				console.log('[swap] calling callSmartContract', contracts)
 				setSwapState({ status: 'pending' })
-				const result = await callSmartContract({ contracts })
-
-				console.log('[swap] callSmartContract result', result)
-
-				if (result.result === TransactionResult.CANCELLED) {
-					throw new Error('Transaction cancelled by user')
+				if (approveContract) {
+					await executeLemonContracts([approveContract], [approveContract.contractAddress])
+					if (direction === 'buy') {
+						const refreshedAllowance = await publicClient.readContract({
+							address: usdcAddress,
+							abi: ERC20_ABI,
+							functionName: 'allowance',
+							args: [signerAccount, routerAddress],
+						})
+						if (refreshedAllowance === 0n) {
+							throw new Error('Approval failed. Please try again.')
+						}
+					} else {
+						const refreshedAllowance = await publicClient.readContract({
+							address: tokenAddress,
+							abi: ERC20_ABI,
+							functionName: 'allowance',
+							args: [signerAccount, routerAddress],
+						})
+						if (refreshedAllowance === 0n) {
+							throw new Error('Approval failed. Please try again.')
+						}
+					}
 				}
-				if (result.result === TransactionResult.FAILED) {
-					const rawMessage = result.error?.message ?? 'Transaction failed'
-					const isWhitelistError = /whitelist|not allowed|not authorized|contract.*not.*registered|not.*whitelisted/i.test(rawMessage)
-					throw new Error(
-						isWhitelistError
-							? `Contract not whitelisted in Lemon miniapp. Please whitelist: ${contracts.map(c => c.contractAddress).join(', ')}`
-							: rawMessage
-					)
+
+				if (!runSwapSimulation) {
+					throw new Error('Invalid swap request')
 				}
 
-				// SUCCESS or PENDING — both include txHash
-				const txHash = result.data.txHash as Hash
+				const swapContract = await runSwapSimulation()
+				const { txHash, receipt } = await executeLemonContracts([swapContract], [swapContract.contractAddress])
 				setSwapState({ status: 'pending', txHash })
-
-				console.log('[swap] waiting for receipt', txHash)
-				const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
-				console.log('[swap] receipt', receipt)
-
-				if (receipt.status !== 'success') {
-					throw new Error(`Transaction reverted on-chain (status=${receipt.status})`)
-				}
 
 				setSwapState({ status: 'success', txHash })
 				return { txHash, receipt }
 			} catch (error) {
 				console.error('[swap] error', error)
-				const message = error instanceof Error ? error.message : String(error)
+				const message = mapSwapErrorMessage(error)
 				setSwapState({ status: 'error', message })
 				throw error
 			}

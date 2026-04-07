@@ -13,6 +13,7 @@ const THRESHOLD_RATIO = 0.6
 const THUMB_SIZE = 64
 const TRACK_INSET = 16
 const EDGE_BACK_GESTURE_GUARD_PX = 28
+const VIEWPORT_BACK_GESTURE_GUARD_PX = 72
 
 export function SwipeButton({
 	label,
@@ -35,6 +36,10 @@ export function SwipeButton({
 	const handleStart = useCallback(
 		(clientX: number) => {
 			if (disabled || completed) return
+			if (clientX < VIEWPORT_BACK_GESTURE_GUARD_PX) {
+				// iOS/Lemon WebView can trigger a native "back" swipe near the left screen edge.
+				return
+			}
 			const trackRect = trackRef.current?.getBoundingClientRect()
 			if (trackRect && clientX < trackRect.left + EDGE_BACK_GESTURE_GUARD_PX) {
 				// Avoid initiating swipe in the OS back-gesture zone.
