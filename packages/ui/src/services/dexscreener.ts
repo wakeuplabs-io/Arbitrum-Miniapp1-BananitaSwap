@@ -27,6 +27,7 @@ const PairSchema = z.object({
     liquidity: z.object({
         usd: z.union([z.number(), z.string()]).optional(),
     }).optional(),
+    marketCap: z.union([z.number(), z.string()]).optional(),
     fdv: z.union([z.number(), z.string()]).optional(),
 }).passthrough()
 
@@ -123,6 +124,7 @@ export type TokenInfo = {
     address: string
     priceUsd: number
     priceChange24h: number
+    marketCap: number
     fdv: number
 }
 
@@ -137,7 +139,10 @@ export async function getTokensInfo(
 ): Promise<TokenInfo[]> {
     if (tokenAddresses.length === 0) return []
 
-    const tokenInfoMap = new Map<string, { priceUsd: number; priceChange24h: number; liquidity: number; fdv: number }>()
+    const tokenInfoMap = new Map<
+        string,
+        { priceUsd: number; priceChange24h: number; liquidity: number; marketCap: number; fdv: number }
+    >()
     const addressSet = new Set(tokenAddresses.map((addr) => addr.toLowerCase()))
 
     const batchPromises = []
@@ -173,6 +178,9 @@ export async function getTokensInfo(
                     typeof pair.liquidity?.usd === 'string'
                         ? parseFloat(pair.liquidity.usd)
                         : pair.liquidity?.usd || 0
+                const marketCapValue = pair.marketCap
+                const marketCap =
+                    typeof marketCapValue === 'string' ? parseFloat(marketCapValue) : marketCapValue || 0
                 const fdvValue = pair.fdv
                 const fdv = typeof fdvValue === 'string' ? parseFloat(fdvValue) : fdvValue || 0
 
@@ -186,6 +194,7 @@ export async function getTokensInfo(
                             priceUsd,
                             priceChange24h,
                             liquidity,
+                            marketCap: marketCap > 0 ? marketCap : 0,
                             fdv: fdv > 0 ? fdv : liquidity,
                         })
                     }
@@ -197,6 +206,7 @@ export async function getTokensInfo(
         address,
         priceUsd: info.priceUsd,
         priceChange24h: info.priceChange24h,
+        marketCap: info.marketCap,
         fdv: info.fdv,
     }))
 }
