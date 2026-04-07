@@ -38,7 +38,7 @@ export type FetchTokensResponse = {
 }
 
 /** When true (default), GET /tokens is called with `allowlist=true` (curated swap list). */
-export const TOKENS_API_USE_ALLOWLIST = false
+export const TOKENS_API_USE_ALLOWLIST = true
 
 /**
  * Fetch USDC-paired tokens from backend.
