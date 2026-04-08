@@ -199,7 +199,6 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
 			if (!isSuccessOrPending(result)) {
 				throw new Error(`${getTransactionErrorMessage(result)} (chainId=${chainId})`)
 			}
-            console.log('Deposit successful:', result)
         } catch (error) {
             console.error('Deposit failed:', error)
             throw error
@@ -227,7 +226,6 @@ export function LemonMiniappProvider({ children }: { children: ReactNode }) {
 			if (!isSuccessOrPending(result)) {
 				throw new Error(`${getTransactionErrorMessage(result)} (chainId=${chainId})`)
 			}
-            console.log('Withdraw successful:', result)
         } catch (error) {
             console.error('Withdraw failed:', error)
             throw error

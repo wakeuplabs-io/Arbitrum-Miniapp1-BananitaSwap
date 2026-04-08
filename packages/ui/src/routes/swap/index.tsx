@@ -73,23 +73,6 @@ function SwapPage() {
 	}
 
 	const handleSelectTokenFromSwap = useCallback((token: Token) => {
-		console.log('[SwapPage] Selected token data:', {
-			symbol: token.symbol,
-			name: token.name,
-			icon: token.icon,
-			logoUrl: token.logoUrl,
-			color: token.color,
-			price: token.price,
-			change24h: token.change24h,
-			marketCap: token.marketCap,
-			balance: token.balance,
-			address: token.address,
-			chainId: token.chainId,
-			dexId: token.dexId,
-			side: tokenSelectSide,
-			fullToken: token,
-		})
-
 		const usdc = getUsdcToken()
 
 		const newMode = tokenSelectSide === 'buy' ? 'buy' : 'sell'

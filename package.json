@@ -14,7 +14,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@pulumi/aws": "6.83.2",
     "@pulumi/pulumi": "3.217.1",
