@@ -8,7 +8,6 @@ import {
 import type { PortfolioChain } from '@/shared/config/network'
 import envParsed from '@/env-parsed'
 
-console.log('envParsed', envParsed)
 
 type PortfolioChainContextType = {
 	portfolioChain: PortfolioChain

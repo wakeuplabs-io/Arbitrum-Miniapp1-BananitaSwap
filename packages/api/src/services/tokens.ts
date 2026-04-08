@@ -31,10 +31,14 @@ function sanitizeTvl(tvl: number): number {
 	return tvl
 }
 
-const GRAPH_API_KEY = process.env.GRAPH_API_KEY ?? 'f5829a0c78f4c2569a6c596146630569'
+const GRAPH_API_KEY = process.env.GRAPH_API_KEY?.trim()
 const GRAPH_GATEWAY = 'https://gateway.thegraph.com'
-const CAMELOT_V3_SUBGRAPH = `${GRAPH_GATEWAY}/api/${GRAPH_API_KEY}/subgraphs/id/3utanEBA9nqMjPnuQP1vMCCys6enSM3EawBpKTVwnUw2`
-const UNISWAP_V3_SUBGRAPH = `${GRAPH_GATEWAY}/api/${GRAPH_API_KEY}/subgraphs/id/FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM`
+const CAMELOT_V3_SUBGRAPH = GRAPH_API_KEY
+	? `${GRAPH_GATEWAY}/api/${GRAPH_API_KEY}/subgraphs/id/3utanEBA9nqMjPnuQP1vMCCys6enSM3EawBpKTVwnUw2`
+	: null
+const UNISWAP_V3_SUBGRAPH = GRAPH_API_KEY
+	? `${GRAPH_GATEWAY}/api/${GRAPH_API_KEY}/subgraphs/id/FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM`
+	: null
 
 export type UsdcPairToken = {
 	address: string
@@ -334,6 +338,15 @@ function mergeItemsToTokensWithVenues(items: UsdcPairItem[]): FetchUsdcPairedTok
 export async function fetchUsdcPairedTokens(
 	opts?: FetchUsdcPairedTokensOptions
 ): Promise<FetchUsdcPairedTokensResult> {
+	if (!GRAPH_API_KEY || !CAMELOT_V3_SUBGRAPH || !UNISWAP_V3_SUBGRAPH) {
+		console.warn('GRAPH_API_KEY is missing; skipping token discovery from subgraphs')
+		return {
+			tokenAddresses: [],
+			tokens: [],
+			fetchedAt: new Date().toISOString(),
+		}
+	}
+
 	const camelotOnly = opts?.camelotOnly ?? false
 	const uniswapOnly = opts?.uniswapOnly ?? false
 	const routerUsdcLower = getSwapRouterUsdcAddressLower()

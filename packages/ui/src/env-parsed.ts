@@ -12,7 +12,6 @@ const env = {
 };
 
 const parseResult = EnvSchema.safeParse(env);
-console.log('parseResult', parseResult)
 
 if (!parseResult.success) {
   console.error("Environment validation failed:", parseResult.error.format());
