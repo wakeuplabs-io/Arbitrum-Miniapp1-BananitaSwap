@@ -7,10 +7,7 @@
 
 ## Remote environments
 
-- Development URL: `TODO_ADD_DEVELOPMENT_URL`
-- Production URL: `TODO_ADD_PRODUCTION_URL`
-
-Replace both placeholders before final release.
+Deployed UI and API URLs are **not fixed in this repo**; they are determined by your `DOMAIN_URL` and SST outputs when you run deploy (see `sst.config.ts`). Document your staging and production URLs in your own deployment notes or fork after setup.
 
 ## Domain topology
 

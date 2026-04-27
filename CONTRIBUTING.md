@@ -12,6 +12,7 @@
 - Keep changes focused and small.
 - Add or update docs when behavior changes.
 - Run relevant lint/build checks before opening a PR.
+- Before pushing credentials-related changes, run a history-aware secret scan locally (e.g. [gitleaks](https://github.com/gitleaks/gitleaks) `gitleaks detect --source .`) to avoid accidentally committing API keys.
 
 ## Commit style
 

@@ -19,7 +19,7 @@ Configured in root `.env` or CI secrets/vars:
 
 ## API variables
 
-Configured in `packages/api/.env.local` for local dev:
+Use `packages/api/env.example` as a template, then configure `packages/api/.env.local` for local dev:
 
 - `DATABASE_URL` (required)
 - `MAINNET_RPC_URL` (required)
