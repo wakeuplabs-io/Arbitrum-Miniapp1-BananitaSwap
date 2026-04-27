@@ -14,7 +14,7 @@ if (!PRIVATE_KEY) throw new Error('Set PRIVATE_KEY env var')
 
 const RPC_URL = process.env.RPC_URL || 'https://arb1.arbitrum.io/rpc'
 const USDC = getAddress(process.env.USDC || '0xaf88d065e77c8cC2239327C5EDb3A432268e5831')
-const TOKEN_OUT = getAddress(process.env.TOKEN_OUT || '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')
+const TOKEN_OUT = getAddress(process.env.TOKEN_OUT || '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')  // WETH (public); not a secret  #gitleaks:allow
 const CAMELOT_ROUTER = getAddress(process.env.CAMELOT_ROUTER || '')
 const AMOUNT_HUMAN = process.env.AMOUNT_HUMAN || '1'
 const MIN_OUT_HUMAN = process.env.MIN_OUT_HUMAN || '0'

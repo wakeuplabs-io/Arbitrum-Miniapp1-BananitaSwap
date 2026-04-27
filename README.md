@@ -42,10 +42,7 @@ npm run dev:all
 
 ## Deployed environments
 
-- Development: add current development URL here.
-- Production: add production URL here.
-
-Document both URLs before release so reviewers can validate both environments.
+There is no canonical public URL in this repository: **staging and production hosts depend on your AWS/SST and DNS setup**. After you deploy, document your own URLs in team docs or in a fork (see [`docs/urls-and-environments.md`](docs/urls-and-environments.md)).
 
 ## Environment variables
 
@@ -84,6 +81,7 @@ Deployment URL topology, CORS behavior, and development/production differences a
 - No private keys or real credentials should ever be committed.
 - Keep `.env*` files local and use CI/secret managers for deploy stages.
 - Rotate credentials immediately if any sensitive value was exposed.
+- Run a secret scan on the full git history (for example [gitleaks](https://github.com/gitleaks/gitleaks): `gitleaks detect --source .`) before making the repository public. The scan may flag an old commit that once contained a demo third-party API key; treat that as **rotate the key in the provider**, not only delete the file on `main`.
 
 ## Scripts
 
