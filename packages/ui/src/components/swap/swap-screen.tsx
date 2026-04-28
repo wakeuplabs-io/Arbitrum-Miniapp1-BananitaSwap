@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { TokenIcon } from './token-icon'
 import { SwipeButton } from './swipe-button'
 import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
@@ -55,6 +56,7 @@ export function SwapScreen({
 	const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
 	const [isDirectionBtnPressed, setIsDirectionBtnPressed] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
+	const [isSwapErrorModalOpen, setIsSwapErrorModalOpen] = useState(false)
 	const directionBtnPressedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const topToken = direction === 'buy' ? usdc : sellToken
 	const bottomToken = direction === 'buy' ? buyToken : usdc
@@ -147,6 +149,12 @@ export function SwapScreen({
 		}
 	}, [])
 
+	useEffect(() => {
+		if (errorMessage) {
+			setIsSwapErrorModalOpen(true)
+		}
+	}, [errorMessage])
+
 	const handlePercent = useCallback(
 		(pct: number) => {
 			const val = (topBalance * pct) / 100
@@ -225,8 +233,36 @@ export function SwapScreen({
 	}, [isDirectionBtnPressed, scheduleDirectionBtnReset])
 
 	return (
-		<div className="flex flex-col h-full bg-[#FFFFFF]">
-			<div className="flex-1 overflow-y-auto overflow-x-hidden pb-20 w-full min-w-0">
+		<>
+			<Dialog open={isSwapErrorModalOpen} onOpenChange={setIsSwapErrorModalOpen}>
+				<DialogContent className="max-w-[calc(100%-2rem)] rounded-2xl border-2 border-border p-5">
+					<DialogTitle className="text-base font-display font-bold text-foreground">
+						No podemos ejecutar ese trade ahora
+					</DialogTitle>
+					<DialogDescription className="text-sm">
+						Probá de nuevo en unos segundos o cambiá el monto.
+					</DialogDescription>
+					<div className="mt-2 flex gap-2">
+						<Button
+							type="button"
+							variant="outline"
+							className="flex-1"
+							onClick={() => setIsSwapErrorModalOpen(false)}
+						>
+							Cerrar
+						</Button>
+						<Button
+							type="button"
+							className="flex-1"
+							onClick={() => setIsSwapErrorModalOpen(false)}
+						>
+							Reintentar
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+			<div className="flex flex-col h-full bg-[#FFFFFF]">
+				<div className="flex-1 overflow-y-auto overflow-x-hidden pb-20 w-full min-w-0">
 				<div className="flex flex-col items-center w-full min-w-0 pt-6 pb-8 animate-fade-in-up">
 					<p className="text-xs font-display font-medium tracking-wide uppercase text-muted-foreground">
 						Available USDC
@@ -491,7 +527,7 @@ export function SwapScreen({
 				</div>
 			</div>
 
-			<div className="fixed bottom-16 left-0 right-0 px-4 pt-3 pb-4 bg-[#FFFFFF] max-w-[430px] mx-auto z-30">
+				<div className="fixed bottom-16 left-0 right-0 px-4 pt-3 pb-4 bg-[#FFFFFF] max-w-[430px] mx-auto z-30">
 				{swapProviderDisplayName && (
 					<p className="text-xs text-center text-muted-foreground mb-2" aria-live="polite">
 						Swap provider:{' '}
@@ -564,7 +600,8 @@ export function SwapScreen({
 						}
 					}}
 				/>
+				</div>
 			</div>
-		</div>
+		</>
 	)
 }

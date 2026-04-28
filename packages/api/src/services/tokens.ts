@@ -31,7 +31,7 @@ function sanitizeTvl(tvl: number): number {
 	return tvl
 }
 
-const GRAPH_API_KEY = process.env.GRAPH_API_KEY ?? 'f5829a0c78f4c2569a6c596146630569'
+const GRAPH_API_KEY = process.env.GRAPH_API_KEY ?? 'REMOVED_GRAPH_API_KEY'
 const GRAPH_GATEWAY = 'https://gateway.thegraph.com'
 const CAMELOT_V3_SUBGRAPH = `${GRAPH_GATEWAY}/api/${GRAPH_API_KEY}/subgraphs/id/3utanEBA9nqMjPnuQP1vMCCys6enSM3EawBpKTVwnUw2`
 const UNISWAP_V3_SUBGRAPH = `${GRAPH_GATEWAY}/api/${GRAPH_API_KEY}/subgraphs/id/FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM`
