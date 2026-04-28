@@ -89,9 +89,7 @@ async function executeLemonContracts(
 	contracts: Parameters<typeof callSmartContract>[0]['contracts'],
 	whitelistAddresses: string[]
 ): Promise<{ txHash: Hash; receipt: Awaited<ReturnType<typeof publicClient.waitForTransactionReceipt>> }> {
-	console.log('[swap] calling callSmartContract', contracts)
 	const result = await callSmartContract({ contracts })
-	console.log('[swap] callSmartContract result', result)
 
 	if (result.result === TransactionResult.CANCELLED) {
 		throw new Error('Transaction cancelled by user')
@@ -109,9 +107,7 @@ async function executeLemonContracts(
 	}
 
 	const txHash = result.data.txHash as Hash
-	console.log('[swap] waiting for receipt', txHash)
 	const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
-	console.log('[swap] receipt', receipt)
 
 	if (receipt.status !== 'success') {
 		throw new Error(`Transaction reverted on-chain (status=${receipt.status})`)
@@ -129,7 +125,6 @@ export function useRouterSwap() {
 	const swap = useCallback(
 		async (params: RouterSwapParams) => {
 			try {
-				console.log('[swap] start', params)
 
 				if (!wallet) {
 					throw new Error('Wallet not connected')
@@ -169,15 +164,6 @@ export function useRouterSwap() {
 					)
 				}
 
-				console.log('[swap] network', {
-					networkKey,
-					routerAddress,
-					chainId,
-					signerAccount,
-					preferredProviderId,
-					providerId,
-					slippageBps,
-				})
 
 				const usdcAddress = await publicClient.readContract({
 					address: routerAddress,
@@ -185,7 +171,6 @@ export function useRouterSwap() {
 					functionName: 'getUsdc',
 				})
 
-				console.log('[swap] addresses', { usdcAddress, adapterAddress })
 
 				const [usdcDecimalsRaw, tokenDecimalsRaw] = await Promise.all([
 					publicClient.readContract({
@@ -202,7 +187,6 @@ export function useRouterSwap() {
 				const usdcDecimals = normalizeTokenDecimals(Number(usdcDecimalsRaw), 'USDC')
 				const tokenDecimals = normalizeTokenDecimals(Number(tokenDecimalsRaw), tokenAddress)
 
-				console.log('[swap] decimals', { usdcDecimals, tokenDecimals })
 
 				let approveContract: LemonContractCall | null = null
 				let runSwapSimulation: (() => Promise<LemonContractCall>) | null = null
@@ -225,14 +209,6 @@ export function useRouterSwap() {
 						args: [signerAccount, routerAddress],
 					})
 
-					console.log('[swap] buy', {
-						usdcAmountBase: usdcAmountBase.toString(),
-						expectedTokenOutBase: expectedTokenOutBase.toString(),
-						slippageAttempts,
-						deadline: deadline.toString(),
-						allowance: allowance.toString(),
-						needsApprove: allowance < usdcAmountBase,
-					})
 
 					runSwapSimulation = async () => {
 						let lastError: unknown = null
@@ -295,14 +271,6 @@ export function useRouterSwap() {
 						args: [signerAccount, routerAddress],
 					})
 
-					console.log('[swap] sell', {
-						tokenAmountBase: tokenAmountBase.toString(),
-						expectedUsdcOutBase: expectedUsdcOutBase.toString(),
-						slippageAttempts,
-						deadline: deadline.toString(),
-						allowance: allowance.toString(),
-						needsApprove: allowance < tokenAmountBase,
-					})
 
 					runSwapSimulation = async () => {
 						let lastError: unknown = null
