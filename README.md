@@ -89,8 +89,7 @@ Deployment URL topology, CORS behavior, and development/production differences a
 - `npm run dev:ui`: run frontend locally.
 - `npm run dev:all`: run both services.
 - `npm run build:ci`: build API and UI.
-- `npm run deploy:app:staging`: deploy with SST (staging).
-- `npm run deploy:app:production`: deploy with SST (production).
+- `npm run deploy`: deploy with SST (staging).
 
 ## License
 
