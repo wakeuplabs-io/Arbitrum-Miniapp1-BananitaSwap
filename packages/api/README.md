@@ -1,71 +1,55 @@
 # API Package
 
-Backend API built with Hono and Neon database.
+Backend API built with Hono, Drizzle ORM, and Neon PostgreSQL.
 
 ## Setup
 
-1. Install dependencies:
+1. Install dependencies from the repo root:
 ```bash
 npm install
 ```
 
-2. **Configurar variables de entorno (REQUERIDO):**
-   
-   La aplicación requiere configurar `DATABASE_URL` antes de iniciar.
-   
-```bash
-# 1. Revisa las opciones disponibles
-cat env.example
+2. Configure environment variables:
 
-# 2. Crea .env.local con tu DATABASE_URL de Neon (REQUERIDO)
-echo "DATABASE_URL=postgresql://user:password@host.neon.tech/database?sslmode=require" > .env.local
+```bash
+# Copy the example and fill in your values
+cp env.example .env.local
 ```
 
-   **Cómo obtener tu DATABASE_URL:**
-   - Crea una cuenta gratuita en [Neon](https://neon.tech)
-   - Crea un nuevo proyecto
-   - Copia la connection string desde el dashboard
-   
-3. **Generar y ejecutar migraciones:**
+The only required variable to start is `DATABASE_URL`. Get a free connection string from [Neon](https://neon.tech) and set it in `.env.local`. See `env.example` for all available variables.
+
+3. Generate and run migrations:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 ```
 
-**Nota:** La aplicación NO iniciará sin una DATABASE_URL válida. Asegúrate de configurarla en `.env.local` antes de ejecutar `npm run dev`.
-
 ## Development
 
-Start the development server:
 ```bash
 npm run dev
 ```
 
-The server will start on `http://localhost:3000`
-
-## Testing
-
-Run tests:
-```bash
-npm test
-```
-
-Run tests with UI:
-```bash
-npm run test:ui
-```
+Server starts on `http://localhost:3000`.
 
 ## Database
 
-This package uses Drizzle ORM with Neon PostgreSQL.
+Uses Drizzle ORM with Neon PostgreSQL.
 
-- `npm run db:generate` - Generate migrations from schema
-- `npm run db:migrate` - Run migrations
-- `npm run db:push` - Push schema changes directly
-- `npm run db:studio` - Open Drizzle Studio
+- `npm run db:generate` — generate migrations from schema
+- `npm run db:migrate` — run pending migrations
+- `npm run db:push` — push schema changes directly (dev only)
+- `npm run db:studio` — open Drizzle Studio
 
 ## Endpoints
 
-- `GET /health` - Health check endpoint
+- `GET /health` — health check
+- `POST /auth/...` — authentication (SIWE-based)
+- `GET /tokens/...` — token list and metadata
+- `GET /users/...` — user data
 
+## Utility scripts
+
+- `npm run verify-siwe` — verify a SIWE signature from the CLI
+- `npm run fetch-usdc-tokens` — fetch and cache USDC-paired tokens from The Graph
