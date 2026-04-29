@@ -95,14 +95,33 @@ If you hit “provider not found”, run `set-provider:arbitrum-sepolia`.
 ```bash
 npm run compile
 npm test
-npm run deploy:local          # requires local node; set USDC_ADDRESS, CAMELOT_ROUTER, FEE_RECIPIENT if needed
+
+# Deploy
+npm run deploy:local                    # requires local node; set USDC_ADDRESS, CAMELOT_ROUTER, FEE_RECIPIENT if needed
 npm run deploy:arbitrum-sepolia
-npm run deploy:arbitrum-one        # mainnet; set USDC_ADDRESS, CAMELOT_ROUTER in .env
+npm run deploy:arbitrum-one             # mainnet; set USDC_ADDRESS, CAMELOT_ROUTER in .env
+npm run deploy-sepolia-mock             # deploy with mock contracts on Sepolia
+
+# Provider registration (owner, once per network)
 npm run set-provider:arbitrum-sepolia
 npm run set-provider:arbitrum-one
+npm run set-uniswap-provider:arbitrum-sepolia
+npm run set-uniswap-provider:arbitrum-one
+npm run set-uniswap-mock-provider:arbitrum-sepolia
+
+# Swap
 npm run swap:arbitrum-sepolia
-npm run swap:arbitrum-one          # swap via Diamond on mainnet (set DIAMOND_ARB_ONE in .env)
-npm run verify:arbitrum-sepolia     # verify all contracts on Arbiscan (set ARBISCAN_API_KEY in .env)
+npm run swap:arbitrum-one               # set DIAMOND_ARB_ONE in .env
+npm run swap-via-router:arbitrum-sepolia
+npm run swap-via-router:arbitrum-one
+
+# Verify on Arbiscan (set ARBISCAN_API_KEY in .env)
+npm run verify:arbitrum-sepolia
+npm run verify                          # uses default network in hardhat config
+
+# Maintenance
+npm run rust-diamond-cut                # diamond cut helper for Rust integration
+npm run rust-replace-router             # replace router facet for Rust integration
 ```
 
 ### Swap script
