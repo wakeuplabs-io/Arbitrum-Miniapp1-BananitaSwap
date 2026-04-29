@@ -66,6 +66,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PINATA_JWT: ${{ secrets.PINATA_JWT }}
+          GRAPH_API_KEY: ${{ secrets.GRAPH_API_KEY }}
           IS_TESTNET: ${{ vars.IS_TESTNET }}
           ROUTER_ADDRESS_SEPOLIA: ${{ vars.ROUTER_ADDRESS_SEPOLIA }}
           ROUTER_ADDRESS_MAINNET: ${{ vars.ROUTER_ADDRESS_MAINNET }}
