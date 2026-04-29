@@ -1,4 +1,4 @@
-name: Deploy Production
+name: Deploy
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
 
     permissions:
       id-token: write
@@ -58,7 +58,7 @@ jobs:
           rm -rf ~/.pulumi
 
       - name: Deploy
-        run: npm run deploy:app:production
+        run: npm run deploy
         env:
           DOMAIN_URL: ${{ vars.DOMAIN_URL }}
           RPC_URL_SEPOLIA: ${{ secrets.RPC_URL_SEPOLIA }}
@@ -94,4 +94,4 @@ jobs:
             echo "- **CloudWatch Logs:** ${{ steps.save-outputs.outputs.cloudwatch_logs_url }}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed to **production** environment at $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "Deployed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

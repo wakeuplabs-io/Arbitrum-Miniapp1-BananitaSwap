@@ -9,8 +9,7 @@
     "build:api": "cd packages/api && npm run build",
     "build:ui": "cd packages/ui && npm run build",
     "build:ci": "npm run build:api && npm run build:ui",
-    "deploy:app:staging": "sst deploy --stage=staging --print-logs",
-    "deploy:app:production": "sst deploy --stage=production --print-logs"
+    "deploy": "sst deploy --print-logs"
   },
   "keywords": [],
   "author": "",
