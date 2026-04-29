@@ -5,30 +5,22 @@ const PROJECT_NAME: string = "arbitrum-miniapp"; // Must be set by developer, mu
 const CUSTOMER: string = "wakeup"; // Must be set by developer, must only contain alphanumeric characters and hyphens
 
 export default $config({
-  app(input) {
+  app(_input) {
     return {
       name: PROJECT_NAME,
-      removal: input?.stage === "production" ? "retain" : "remove",
-      protect: ["production"].includes(input?.stage),
+      removal: "remove",
+      protect: false,
       home: "aws",
       providers: {
         aws: {
           defaultTags: {
-            tags: { customer: CUSTOMER, stage: input.stage },
+            tags: { customer: CUSTOMER },
           },
         },
       },
     };
   },
   async run() {
-    let vpc: sst.aws.Vpc | undefined = undefined;
-    // Remove if no static IP is required
-    if ($app.stage === "production") {
-      vpc = new sst.aws.Vpc("arbitrum-miniapp-vpc", {
-        nat: "ec2",
-      });
-    }
-
     // Load environment variables:
     // 1. From local .env file (for development)
     // 2. From GitHub vars JSON (for CI/CD - automatically injected by workflow)
@@ -37,28 +29,14 @@ export default $config({
 
 
     const DOMAIN_URL = process.env.DOMAIN_URL!;
-    const UI_URL = `https://${DOMAIN_URL}`;
-
     const API_DOMAIN_URL = `api.${DOMAIN_URL}`;
-    const API_URL = `https://${API_DOMAIN_URL}`;
 
-    const allowedOrigins = [
-      UI_URL,
-      API_URL,
-      ...($app.stage !== "production"
-        ? [
-          "http://localhost:3000", // for local development
-          "http://localhost:9999", // for API dev server
-        ]
-        : []),
-    ];
 
     // deploy api - all env vars are passed automatically!
     const apiFunction = new sst.aws.Function(`${PROJECT_NAME}-api`, {
-      vpc: vpc,
       handler: "packages/api/src/index.handler",
       environment: {
-        NODE_ENV: $app.stage,
+        NODE_ENV: "production",
         DATABASE_URL: process.env.DATABASE_URL!,
         MAINNET_RPC_URL: process.env.RPC_URL_MAINNET!,
         SEPOLIA_RPC_URL: process.env.RPC_URL_SEPOLIA!,
@@ -72,7 +50,7 @@ export default $config({
     const api = new sst.aws.ApiGatewayV2("gateway", {
       domain: API_DOMAIN_URL,
       cors: {
-        allowOrigins: $app.stage === "production" ? allowedOrigins : ["*"],
+        allowOrigins: ["*"],
         allowMethods: [
           "GET",
           "POST",
@@ -97,7 +75,7 @@ export default $config({
       },
       domain: DOMAIN_URL,
       environment: {
-        NODE_ENV: $app.stage,
+        NODE_ENV: "production",
         VITE_API_URL: $interpolate`${api.url}`,
         VITE_RPC_URL_SEPOLIA: process.env.RPC_URL_SEPOLIA!,
         VITE_RPC_URL_MAINNET: process.env.RPC_URL_MAINNET!,
@@ -143,7 +121,6 @@ export default $config({
     // This allows the software provider to assume this role from their AWS account
     // and access CloudWatch logs through the AWS console
     const supportUserArn = process.env.SUPPORT_USER_ARN;
-    let cloudwatchLogsRoleArn: any = undefined;
     let apiFunctionLogsUrl: any = undefined;
 
     if (supportUserArn) {
@@ -169,7 +146,7 @@ export default $config({
         );
       });
 
-      const cloudwatchLogsRole = new aws.iam.Role(
+      new aws.iam.Role(
         `${PROJECT_NAME}-cloudwatch-logs-access`,
         {
           assumeRolePolicy: aws.iam.getPolicyDocumentOutput({
@@ -215,11 +192,7 @@ export default $config({
                         variable: "aws:ResourceTag/customer",
                         values: [CUSTOMER],
                       },
-                      {
-                        test: "StringEquals",
-                        variable: "aws:ResourceTag/stage",
-                        values: [$app.stage],
-                      },
+
                     ],
                   },
                 ],
@@ -228,16 +201,10 @@ export default $config({
           ],
           tags: {
             customer: CUSTOMER,
-            stage: $app.stage,
             purpose: "cloudwatch-logs-access",
           },
         },
-        {
-          protect: $app.stage === "production",
-        },
       );
-
-      cloudwatchLogsRoleArn = cloudwatchLogsRole.arn;
     }
 
     return {
