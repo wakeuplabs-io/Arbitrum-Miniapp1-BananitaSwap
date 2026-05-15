@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
-import { SwipeButton } from '@/components/swap/swipe-button'
+import { ActionButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { DepositModalHeader } from './deposit-modal-header'
 import { DepositAmountDisplay } from './deposit-amount-display'
@@ -39,7 +39,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
 		setError(null)
 	}
 
-	async function handleSwipeComplete() {
+	async function handleAction() {
 		if (!isValid || numericValue <= 0) return
 
 		setIsProcessing(true)
@@ -105,10 +105,10 @@ export function DepositModal({ onClose }: DepositModalProps) {
 				/>
 				<NumericKeypad onKey={handleKey} onDelete={handleDelete} />
 				<div className="px-4 pt-4 pb-8">
-					<SwipeButton
-						label="Swipe to Deposit"
+					<ActionButton
+						label="Deposit"
 						disabled={!isValid || isProcessing}
-						onSwipeComplete={handleSwipeComplete}
+						onClick={handleAction}
 					/>
 				</div>
 			</DialogContent>

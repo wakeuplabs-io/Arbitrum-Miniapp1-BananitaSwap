@@ -3,6 +3,9 @@
  * normalize to a numeric value internally; reject mixed / multiple separators.
  */
 
+export const MAX_SWAP_INPUT_DECIMALS = 10
+export const MAX_SELL_PERCENT_OF_BALANCE = 0.9999
+
 const ARABIC_DECIMAL = /[\u066B\u066C]/g
 
 /**
@@ -90,6 +93,28 @@ export function parseSwapAmountToNumber(display: string): number {
 	}
 	const n = Number.parseFloat(normalized.replace(/,/g, '.'))
 	return Number.isFinite(n) ? n : NaN
+}
+
+function floorToDecimals(value: number, decimals: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 0
+	const multiplier = Math.pow(10, decimals)
+	return Math.floor(value * multiplier) / multiplier
+}
+
+function toNonExponentialString(value: number): string {
+	if (!Number.isFinite(value)) return ''
+	return value.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 })
+}
+
+/**
+ * Format amount for input display: floor to max decimals, trim trailing zeros, no exponential notation.
+ */
+export function formatAmountForInput(value: number, maxDecimals: number = MAX_SWAP_INPUT_DECIMALS): string {
+	if (!Number.isFinite(value) || value <= 0) return ''
+	const floored = floorToDecimals(value, maxDecimals)
+	const str = toNonExponentialString(floored)
+	// Trim trailing zeros after decimal point
+	return str.replace(/\.?0+$/, '')
 }
 
 export const SWAP_AMOUNT_ERROR_MIXED_SEPARATORS =

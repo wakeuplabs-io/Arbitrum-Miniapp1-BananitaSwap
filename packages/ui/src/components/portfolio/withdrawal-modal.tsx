@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
-import { SwipeButton } from '@/components/swap/swipe-button'
+import { ActionButton } from '@/components/swap/swipe-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
@@ -45,7 +45,7 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
         setError(null)
     }
 
-    async function handleSwipeComplete() {
+    async function handleAction() {
         if (!isValid || numericValue <= 0) {
             return
         }
@@ -183,10 +183,10 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
                 <NumericKeypad onKey={handleKey} onDelete={handleDelete} />
 
                 <div className="px-4 pt-4 pb-8">
-                    <SwipeButton
-                        label="Swipe to Withdraw"
+                    <ActionButton
+                        label="Withdraw"
                         disabled={!isValid || isProcessing}
-                        onSwipeComplete={handleSwipeComplete}
+                        onClick={handleAction}
                     />
                 </div>
             </DialogContent>

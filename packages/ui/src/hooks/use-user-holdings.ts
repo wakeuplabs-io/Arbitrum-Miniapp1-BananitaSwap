@@ -12,6 +12,8 @@ import { getUsdcTokenForChain } from './use-tokens'
 
 export type TokenHolding = { token: Token; amount: number }
 
+const MIN_DISPLAY_BALANCE = 1e-10
+
 function isUsdStableHolding(token: Token): boolean {
     const sym = token.symbol
     if (sym === 'USDC' || sym === 'USDC.e') return true
@@ -106,10 +108,10 @@ function useRawUserHoldings(chain?: PortfolioChain) {
 export function useUserHoldings(chain?: PortfolioChain) {
     const { holdings: rawUserHoldings, isLoading } = useRawUserHoldings(chain)
 
-    // Memoize holdings to ensure stable reference and filter out tokens with 0 amount
-    const holdings = useMemo(() => {
-        return rawUserHoldings.filter((h) => h.amount > 0)
-    }, [rawUserHoldings])
+	// Memoize holdings to ensure stable reference and filter out tokens with 0 amount
+	const holdings = useMemo(() => {
+		return rawUserHoldings.filter((h) => h.amount >= MIN_DISPLAY_BALANCE)
+	}, [rawUserHoldings])
 
     const totalBalanceUsd = useMemo(() => {
         let total = 0
