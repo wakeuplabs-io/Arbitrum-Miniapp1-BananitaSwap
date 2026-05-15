@@ -6,7 +6,6 @@ import { TokenListItem } from './portfolio-view/token-list-item'
 import { TokenListSkeleton } from './portfolio-view/token-list-skeleton'
 import { usePortfolioChain } from '@/contexts/portfolio-chain-context'
 import { useUserHoldings } from '@/hooks/use-user-holdings'
-import { useUserProfile } from '@/hooks/use-user-profile'
 import { useLemonMiniapp } from '@/providers/lemon-miniapp-provider'
 import type { Token } from '@/lib/tokens'
 
@@ -34,7 +33,6 @@ export function PortfolioScreen({
 	const { portfolioChain } = usePortfolioChain()
 	const { holdings, totalBalanceUsd: balanceUsd, dailyChangePercent, isLoading } =
 		useUserHoldings(portfolioChain)
-	const profile = useUserProfile()
 	const { lemonTag, isAuthenticating } = useLemonMiniapp()
 
 	const actions = [
@@ -45,14 +43,13 @@ export function PortfolioScreen({
 
 	return (
 		<div className="flex flex-col h-full overflow-y-auto overflow-x-hidden pb-20">
-			<PortfolioHeader
-				lemonTag={lemonTag}
-				balanceUsd={balanceUsd}
-				dailyChangePercent={dailyChangePercent}
-				isLoading={isLoading || isAuthenticating}
-				profile={profile}
-				onOpenDeposit={onOpenDeposit}
-			/>
+		<PortfolioHeader
+			lemonTag={lemonTag}
+			balanceUsd={balanceUsd}
+			dailyChangePercent={dailyChangePercent}
+			isLoading={isLoading || isAuthenticating}
+			onOpenDeposit={onOpenDeposit}
+		/>
 
 			<PortfolioActions actions={actions} />
 

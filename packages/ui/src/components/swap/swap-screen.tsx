@@ -5,7 +5,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { TokenIcon } from './token-icon'
-import { SwipeButton } from './swipe-button'
+import { ActionButton } from './swipe-button'
 import { DexScreenerEmbedChart } from './dexscreener-embed-chart'
 import type { Token } from '@/lib/tokens'
 import { getUsdcToken } from '@/hooks/use-tokens'
@@ -20,6 +20,8 @@ import {
 	getSwapAmountFormatError,
 	parseSwapAmountToNumber,
 	sanitizeSwapAmountInput,
+	formatAmountForInput,
+	MAX_SELL_PERCENT_OF_BALANCE,
 } from '@/lib/swap-amount-input'
 
 
@@ -157,11 +159,15 @@ export function SwapScreen({
 
 	const handlePercent = useCallback(
 		(pct: number) => {
-			const val = (topBalance * pct) / 100
-			setAmount(val > 0 ? val.toString() : '')
+			const raw = (topBalance * pct) / 100
+			const capped =
+				direction === 'sell' && pct === 100
+					? Math.min(raw, topBalance * MAX_SELL_PERCENT_OF_BALANCE)
+					: raw
+			setAmount(formatAmountForInput(capped))
 			setSelectedPercent(pct)
 		},
-		[topBalance]
+		[topBalance, direction]
 	)
 
 	function formatOutputAmount(val: number) {
@@ -179,7 +185,7 @@ export function SwapScreen({
 
 	const topLabel = direction === 'buy' ? 'Sell' : 'Sell'
 	const bottomLabel = direction === 'buy' ? 'Buy' : 'Buy'
-	const swipeLabel = direction === 'buy' ? 'Swipe to Buy' : 'Swipe to Sell'
+	const actionLabel = direction === 'buy' ? 'Buy' : 'Sell'
 	const nonFixedSide = direction === 'buy' ? 'buy' : 'sell'
 
 	function handleToggleDirection() {
@@ -547,56 +553,56 @@ export function SwapScreen({
 					<p className="text-xs text-destructive text-center mb-2" role="alert">
 						{errorMessage}
 					</p>
-				)}
-				<SwipeButton
-					label={swipeLabel}
-					disabled={!isValid || isProcessing || isSwapping}
-					onSwipeComplete={async () => {
-						if (!topToken || !bottomToken || !amountIsFinite || amountValue <= 0 || amountFormatError) {
-							onSwapComplete()
-							return
-						}
+			)}
+			<ActionButton
+				label={actionLabel}
+				disabled={!isValid || isProcessing || isSwapping}
+				onClick={async () => {
+					if (!topToken || !bottomToken || !amountIsFinite || amountValue <= 0 || amountFormatError) {
+						onSwapComplete()
+						return
+					}
 
-						try {
-							setIsProcessing(true)
+					try {
+						setIsProcessing(true)
 
-							if (direction === 'buy') {
-								if (!bottomToken.address) {
-									throw new Error('Missing token address for buy')
-								}
-
-								await routerSwap({
-									direction: 'buy',
-									tokenAddress: bottomToken.address as `0x${string}`,
-									amountInHuman: amountValue,
-									expectedOutHuman: outputValue,
-									providerId: pairToken?.providerId ?? getDefaultProviderId(),
-								})
-							} else {
-								if (!topToken.address) {
-									throw new Error('Missing token address for sell')
-								}
-
-								await routerSwap({
-									direction: 'sell',
-									tokenAddress: topToken.address as `0x${string}`,
-									amountInHuman: amountValue,
-									expectedOutHuman: outputValue,
-									providerId: pairToken?.providerId ?? getDefaultProviderId(),
-								})
+						if (direction === 'buy') {
+							if (!bottomToken.address) {
+								throw new Error('Missing token address for buy')
 							}
 
-							await Promise.all([
-								queryClient.invalidateQueries({ queryKey: ['usdc-balance'], refetchType: 'all' }),
-								queryClient.invalidateQueries({ queryKey: ['owned-tokens'], refetchType: 'all' }),
-								queryClient.invalidateQueries({ queryKey: ['erc20-balance'], refetchType: 'all' }),
-							])
+							await routerSwap({
+								direction: 'buy',
+								tokenAddress: bottomToken.address as `0x${string}`,
+								amountInHuman: amountValue,
+								expectedOutHuman: outputValue,
+								providerId: pairToken?.providerId ?? getDefaultProviderId(),
+							})
+						} else {
+							if (!topToken.address) {
+								throw new Error('Missing token address for sell')
+							}
 
-							onSwapComplete()
-						} catch (err) {
-							console.error('Swap error:', err)
-						} finally {
-							setIsProcessing(false)
+							await routerSwap({
+								direction: 'sell',
+								tokenAddress: topToken.address as `0x${string}`,
+								amountInHuman: amountValue,
+								expectedOutHuman: outputValue,
+								providerId: pairToken?.providerId ?? getDefaultProviderId(),
+							})
+						}
+
+						await Promise.all([
+							queryClient.invalidateQueries({ queryKey: ['usdc-balance'], refetchType: 'all' }),
+							queryClient.invalidateQueries({ queryKey: ['owned-tokens'], refetchType: 'all' }),
+							queryClient.invalidateQueries({ queryKey: ['erc20-balance'], refetchType: 'all' }),
+						])
+
+						onSwapComplete()
+					} catch (err) {
+						console.error('Swap error:', err)
+					} finally {
+						setIsProcessing(false)
 						}
 					}}
 				/>
