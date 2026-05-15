@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { NumericKeypad } from '@/components/swap/numeric-keypad'
-import { ActionButton } from '@/components/swap/swipe-button'
+import { ActionButton } from '@/components/swap/action-button'
 import { SuccessScreen } from '@/components/swap/success-screen'
 import { DepositModalHeader } from './deposit-modal-header'
 import { DepositAmountDisplay } from './deposit-amount-display'
