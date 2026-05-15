@@ -20,15 +20,16 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
     const [isProcessing, setIsProcessing] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const { portfolioChain } = usePortfolioChain()
-    const { getTotalBalanceUsd } = useUserHoldings(portfolioChain)
-    const balanceUsd = getTotalBalanceUsd()
+    const { getUsdcBalance, isLoading } = useUserHoldings(portfolioChain)
+    const withdrawableUsdc = getUsdcBalance()
     const { handleWithdraw, isInLemonWebView } = useLemonMiniapp()
 
     const quickAmounts = [25, 50, 100]
     const displayValue = amount || '0'
     const numericValue = parseFloat(amount) || 0
-    const exceedsBalance = numericValue > balanceUsd
-    const isValid = numericValue > 0 && numericValue <= balanceUsd
+    const effectiveBalance = withdrawableUsdc ?? 0
+    const exceedsBalance = numericValue > effectiveBalance
+    const isValid = withdrawableUsdc !== null && numericValue > 0 && numericValue <= withdrawableUsdc
 
     function handleKey(key: string) {
         if (key === '.' && amount.includes('.')) return
@@ -143,7 +144,7 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
                     <p className="text-sm text-muted-foreground text-center mt-1">
                         Balance available:
                         <span className="font-semibold text-foreground numeric">
-                            ${balanceUsd.toFixed(2)} USDC
+                            {isLoading || withdrawableUsdc === null ? '—' : `$${withdrawableUsdc.toFixed(2)}`} USDC
                         </span>
                     </p>
                 </div>
@@ -155,6 +156,7 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
                             type="button"
                             variant={amount === val.toString() ? 'default' : 'secondary'}
                             size="sm"
+                            disabled={isLoading || withdrawableUsdc === null}
                             onClick={() => {
                                 setAmount(val.toString())
                                 setError(null)
@@ -164,13 +166,13 @@ export function WithdrawalModal({ onClose }: WithdrawalModalProps) {
                             ${val}
                         </Button>
                     ))}
-                    {balanceUsd > 0 && (
+                    {withdrawableUsdc !== null && withdrawableUsdc > 0 && (
                         <Button
                             type="button"
-                            variant={amount === balanceUsd.toFixed(2) ? 'default' : 'secondary'}
+                            variant={amount === withdrawableUsdc.toFixed(2) ? 'default' : 'secondary'}
                             size="sm"
                             onClick={() => {
-                                setAmount(balanceUsd.toFixed(2))
+                                setAmount(withdrawableUsdc.toFixed(2))
                                 setError(null)
                             }}
                             className="numeric rounded-full tap-scale"
