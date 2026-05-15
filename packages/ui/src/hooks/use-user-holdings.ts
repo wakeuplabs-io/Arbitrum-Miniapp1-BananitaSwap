@@ -12,7 +12,8 @@ import { getUsdcTokenForChain } from './use-tokens'
 
 export type TokenHolding = { token: Token; amount: number }
 
-const MIN_DISPLAY_BALANCE = 1e-10
+/** Holdings below this estimated USD value are hidden from UI lists and totals. */
+const MIN_HOLDING_USD = 0.01
 
 function isUsdStableHolding(token: Token): boolean {
     const sym = token.symbol
@@ -23,6 +24,13 @@ function isUsdStableHolding(token: Token): boolean {
         addr === ARBITRUM_MAINNET_USDC_E_ADDRESS.toLowerCase() ||
         addr === ARBITRUM_SEPOLIA_USDC_ADDRESS.toLowerCase()
     )
+}
+
+function estimateHoldingUsd(holding: TokenHolding): number | null {
+    if (isUsdStableHolding(holding.token)) return holding.amount
+    const price = holding.token.price
+    if (price == null || price <= 0) return null
+    return holding.amount * price
 }
 
 /**
@@ -108,9 +116,13 @@ function useRawUserHoldings(chain?: PortfolioChain) {
 export function useUserHoldings(chain?: PortfolioChain) {
     const { holdings: rawUserHoldings, isLoading } = useRawUserHoldings(chain)
 
-	// Memoize holdings to ensure stable reference and filter out tokens with 0 amount
+	// Memoize holdings: drop dust and positions we cannot value in USD (no price for non-stables)
 	const holdings = useMemo(() => {
-		return rawUserHoldings.filter((h) => h.amount >= MIN_DISPLAY_BALANCE)
+		return rawUserHoldings.filter((h) => {
+			if (h.amount <= 0) return false
+			const usd = estimateHoldingUsd(h)
+			return usd !== null && usd >= MIN_HOLDING_USD
+		})
 	}, [rawUserHoldings])
 
     const totalBalanceUsd = useMemo(() => {
